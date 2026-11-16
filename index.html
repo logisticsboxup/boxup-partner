@@ -158,6 +158,13 @@ a{color:var(--g2)}
 .found .b2{display:flex;gap:8px}
 .found .b2 button{flex:1;border-radius:12px;padding:13px 8px;font-weight:800;border:1.5px solid var(--g);background:#fff;color:var(--g)}
 .found .b2 button.p{background:var(--gr);border-color:var(--gr);color:#fff}
+.chip.mv{background:#fff3cd;color:#8a6100}
+.chip.nf{background:#fde2e1;color:#a12a22}
+.rel{border:1.5px solid #e3ded3;border-radius:12px;padding:9px 11px;margin-top:8px;text-align:left;background:#fff;width:100%;font-size:13.5px;color:var(--ink)}
+.rel.on{border-color:var(--gr);background:#f3faf5}
+.rel small{display:block;color:var(--mu);font-size:12px;margin-top:2px}
+.rel .why{font-size:11.5px;margin-top:4px}.why .y{color:#1f7a3f;font-weight:700}.why .n{color:#b3b0a6}
+.mvl{font-size:12.5px;color:#8a6100;background:#fff8e6;border-radius:8px;padding:6px 9px;margin-top:6px}
 .found .pick{display:flex;flex-direction:column;gap:6px;max-height:40vh;overflow:auto}
 .found .pick button{text-align:left;border:1.5px solid var(--ln);background:#fff;border-radius:12px;padding:10px 12px}
 .busy{display:inline-block;width:16px;height:16px;border:2.5px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp .8s linear infinite;vertical-align:-3px}
@@ -333,7 +340,7 @@ const store = { get(k, d){ try { const v = localStorage.getItem(k); return v == 
                 set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} } };
 
 let ORDERS = [], VER = '', FILTER = 'all', SEL = null, SHOWN = 120;
-let IDX = new Map();            // AWB / order id (upper case) -> order
+let IDX = new Map(), OLDK = new Set();            // AWB / order id (upper case) -> order
 let MINE = new Set(store.get(MINE_KEY, []));
 
 /* ---------- talking to the Google Sheet ---------- */
@@ -350,6 +357,10 @@ async function api(body, ms){
 const PS = { 'Picked up':'picked', 'In transit':'transit', 'Out for delivery':'ofd', 'Delivered':'delivered', 'Attempt failed':'failed', 'RTO':'rto' };
 const ST_TXT = { picked:'Picked up', transit:'In transit', ofd:'Out for delivery', delivered:'Delivered', failed:'Attempt failed', rto:'RTO' };
 function awbs(o){ return String(o.awb || '').split(/[,\s]+/).filter(Boolean); }
+function olds(o){ return String(o.old || '').split(/[,\s]+/).filter(Boolean); }
+const moved = o => !!(o.cou && !/anjani/i.test(o.cou) && olds(o).length);
+function saAwbs(o){ return moved(o) ? olds(o) : awbs(o); }               // the Shree Anjani AWB(s) the partner knows
+const nowTxt = o => moved(o) ? `Now ${o.cou} · ${awbs(o)[0] || ''}` : '';
 function sysStatus(o){                       // BoxUp / courier tracking, read only
   const os = String(o.os || '');
   if (/^(delivered|out for delivery|in transit|at destination|dispatched)$/i.test(os)) return os;
@@ -378,9 +389,10 @@ function sysChip(o){ const s = sysStatus(o), g = /deliver/i.test(s) && !/out for
 
 /* ---------- index for search and for matching scans ---------- */
 function buildIndex(){
-  IDX = new Map();
+  IDX = new Map(); OLDK = new Set();
   ORDERS.forEach(o => {
     awbs(o).forEach(a => IDX.set(a.toUpperCase(), o));
+    olds(o).forEach(a => { if (!IDX.has(a)) IDX.set(a, o); OLDK.add(a); });
     if (o.id) IDX.set(o.id.toUpperCase(), o);
   });
 }
@@ -388,18 +400,44 @@ function buildIndex(){
 function matchText(raw){
   const t = String(raw || '').toUpperCase();
   if (!t.trim()) return null;
-  const direct = IDX.get(t.trim()); if (direct) return { o: direct, by: /^\d+$/.test(t.trim()) ? 'awb' : 'id', key: t.trim() };
+  const direct = IDX.get(t.trim()); if (direct) return { o: direct, by: OLDK.has(t.trim()) ? 'old' : /^\d+$/.test(t.trim()) ? 'awb' : 'id', key: t.trim() };
   // numbers (AWBs): any 8 to 14 digit run, also when OCR split it with spaces
   const digits = t.replace(/[OQD]/g, '0').replace(/[IL|]/g, '1').replace(/[S]/g, '5').replace(/B/g, '8');
   const runs = (digits.match(/\d[\d \-]{6,20}\d/g) || []).map(s => s.replace(/[ \-]/g, ''));
   for (const r of runs) {
-    if (IDX.has(r)) return { o: IDX.get(r), by:'awb', key:r };
-    for (let L = 10; L >= 8; L--) for (let i = 0; i + L <= r.length; i++) { const k = r.slice(i, i + L); const o = IDX.get(k); if (o && awbs(o).includes(k)) return { o, by:'awb', key:k }; }
+    if (IDX.has(r)) return { o: IDX.get(r), by: OLDK.has(r) ? 'old' : 'awb', key:r };
+    for (let L = 14; L >= 8; L--) for (let i = 0; i + L <= r.length; i++) { const k = r.slice(i, i + L); const o = IDX.get(k); if (o && (awbs(o).includes(k) || olds(o).includes(k))) return { o, by: OLDK.has(k) ? 'old' : 'awb', key:k }; }
   }
   // order IDs like 4726-01H-26
   const compact = t.replace(/\s+/g, '');
   for (const o of ORDERS) { const id = (o.id || '').toUpperCase(); if (id.length >= 6 && compact.includes(id)) return { o, by:'id', key:id }; }
   return null;
+}
+
+/* no AWB match: related orders by name + city (+ pincode) read from the paper */
+const REL_SKIP = new Set('SHREE ANJANI MARUTI MARUTHI DTDC DELHIVERY LOGISTICS COURIER COURIERS DELIVERY RECEIPT RECEIVED AWB DATE SIGN SIGNATURE NAME CITY STATE PHONE MOBILE ADDRESS PIN PINCODE FROM SHIP SHIPPED BOX BOXES BOXUP LUXURY GIFTING PVT LTD LIMITED INDIA ROAD NEAR FLOOR HOUSE STREET THE AND FOR WITH ORDER NUMBER POD PROOF COPY CONSIGNEE CONSIGNOR WEIGHT PREPAID SURFACE AIR EXPRESS SMART B2C FORWARD TYPE TRACKING'.split(' '));
+const CITY_AL = { BENGALURU:'BLR', BANGALORE:'BLR', BANGLORE:'BLR', BENGALORE:'BLR', GURUGRAM:'GGN', GURGAON:'GGN', MUMBAI:'BOM', BOMBAY:'BOM', CHENNAI:'MAA', MADRAS:'MAA', KOLKATA:'CCU', CALCUTTA:'CCU', TRIVANDRUM:'TVM', THIRUVANANTHAPURAM:'TVM', KOCHI:'COK', COCHIN:'COK', ERNAKULAM:'COK', MYSORE:'MYS', MYSURU:'MYS', CALICUT:'CLT', KOZHIKODE:'CLT', PONDICHERRY:'PNY', PUDUCHERRY:'PNY', TRICHY:'TRZ', TIRUCHIRAPPALLI:'TRZ', HUBLI:'HBX', HUBBALLI:'HBX', MANGALORE:'IXE', MANGALURU:'IXE' };
+const cityW = w => CITY_AL[w] || w;
+function related(text){
+  const T = String(text || '').toUpperCase(), words = new Set((T.match(/[A-Z]{3,}/g) || []).filter(w => !REL_SKIP.has(w)).flatMap(w => [w, cityW(w)]));
+  const pins = (T.replace(/[OQ]/g, '0').match(/\b\d{6}\b/g) || []);
+  if (!words.size && !pins.length) return [];
+  const out = [];
+  for (const o of ORDERS) {
+    const nw = String(o.name || '').toUpperCase().match(/[A-Z]{3,}/g) || [], cw = String(o.co || '').toUpperCase().match(/[A-Z]{4,}/g) || [], tw = (String(o.city || '').toUpperCase().match(/[A-Z]{3,}/g) || []).map(cityW);
+    const name = nw.some(w => words.has(w)), comp = cw.some(w => !REL_SKIP.has(w) && words.has(w)), city = tw.some(w => words.has(w));
+    const pin = pins.includes(o.pin) ? 2 : pins.some(p => o.pin && p.slice(0, 4) === String(o.pin).slice(0, 4)) ? 1 : 0;
+    if (!name && !comp) continue;
+    const sc = (name ? 4 : 0) + (comp ? 2 : 0) + (city ? 3 : 0) + pin * 2 + (group(o) !== 'delivered' ? 1 : 0);
+    if (sc >= 6) out.push({ o, sc, name, comp, city, pin });
+  }
+  return out.sort((a, b) => b.sc - a.sc).slice(0, 6);
+}
+function relHtml(list){
+  return list.map((r, i) => { const o = r.o, a = saAwbs(o);
+    return `<button type="button" class="rel${i === 0 ? ' on' : ''}" data-ri="${i}"><b>${esc(o.id)}</b> · ${esc(o.name || o.co || '')} ${o.ps ? partnerChip(o) : sysChip(o)}
+      <small>${esc([o.city, o.pin].filter(Boolean).join(' · '))}${a[0] ? ' · Shree Anjani ' + esc(a[0]) : ''}${moved(o) ? ' · ' + esc(nowTxt(o)) : ''}</small>
+      <div class="why"><span class="${r.name || r.comp ? 'y' : 'n'}">${r.name || r.comp ? '&#10003;' : '&#10007;'} Name</span> &nbsp;<span class="${r.city ? 'y' : 'n'}">${r.city ? '&#10003;' : '&#10007;'} City</span> &nbsp;<span class="${r.pin ? 'y' : 'n'}">${r.pin === 2 ? '&#10003;' : r.pin ? '&#8776;' : '&#10007;'} Pincode</span></div></button>`; }).join('');
 }
 
 /* ---------- loading ---------- */
@@ -447,11 +485,11 @@ function renderAll(){
   if (SEL) renderDetail(false);
 }
 function rowHtml(o){
-  const g = group(o), a = awbs(o);
+  const g = group(o), a = saAwbs(o);
   return `<button type="button" class="row st-${g}${SEL === o ? ' sel' : ''}" data-id="${esc(o.id)}">
     <div class="m"><div class="t">${esc(a[0] || o.id)} <span>· ${esc(o.name || o.co || '')}</span></div>
     <small>${esc([o.city, o.pin].filter(Boolean).join(' ') )} · ${esc(o.id)}${a.length > 1 ? ' · ' + a.length + ' boxes' : ''}</small>
-    <small>${esc(o.co || '')}</small></div>
+    <small>${esc(o.co || '')}</small>${moved(o) ? `<small style="color:#8a6100">&#8635; AWB changed · ${esc(nowTxt(o))}</small>` : ''}</div>
     <div class="chips2">${o.ps ? partnerChip(o) : sysChip(o)}${o.pod ? '<span class="chip pod">POD &#10003;</span>' : ''}</div></button>`;
 }
 function renderList(){
@@ -479,8 +517,10 @@ function search(q){
   const out = [];
   for (const o of ORDERS) {
     let score = 0;
-    if (awbs(o).some(a => a === qd)) score = 100; else if (o.id.toLowerCase() === q) score = 95;
-    else if (awbs(o).some(a => a.includes(qd))) score = 60; else if (o.id.toLowerCase().includes(q)) score = 55;
+    const all = awbs(o).concat(olds(o));
+    if (all.some(a => a === qd)) score = 100; else if (o.id.toLowerCase() === q) score = 95;
+    else if (qd.length >= 4 && all.some(a => a.includes(qd))) score = 60; else if (o.id.toLowerCase().includes(q)) score = 55;
+    else if (q.includes(' ')) { const hay = [o.name, o.co, o.city, o.pin, o.st, o.id].join(' ').toLowerCase(); const tk = q.split(/\s+/).filter(Boolean); if (tk.every(w => hay.includes(w))) score = 45 + (tk.some(w => (o.name || '').toLowerCase().includes(w)) ? 5 : 0); }
     else if ((o.name || '').toLowerCase().includes(q)) score = 40; else if ((o.co || '').toLowerCase().includes(q)) score = 30;
     else if ((o.ph || '').replace(/\D/g, '').includes(qd) && qd.length >= 4) score = 25;
     else if ((o.pin || '') === qd || (o.city || '').toLowerCase().startsWith(q)) score = 15;
@@ -495,10 +535,10 @@ function renderDD(){
   ddList = search(q); ddSel = 0;
   const ql = q.toLowerCase();
   $('dd').innerHTML = ddList.length ? ddList.map((o, i) => {
-    const a = awbs(o), aw = a.find(x => x.includes(ql.replace(/\s+/g, ''))) || a[0] || '';
-    return `<div class="it${i === 0 ? ' on' : ''}" data-i="${i}"><b>${hl(aw, ql)}</b> · ${hl(o.name || o.co, ql)}
-      <small>Order ${hl(o.id, ql)} · ${esc([o.city, o.pin].filter(Boolean).join(' '))} · ${esc(o.ps || sysStatus(o))}</small></div>`;
-  }).join('') : `<div class="none">No Shree Anjani order matches “${esc(q)}”</div>`;
+    const a = saAwbs(o).concat(awbs(o)), aw = a.find(x => x.includes(ql.replace(/\s+/g, ''))) || a[0] || '';
+    return `<div class="it${i === 0 ? ' on' : ''}" data-i="${i}"><b>${hl(aw, ql)}</b> · ${hl(o.name || o.co, ql)}${moved(o) ? ' <span class="chip mv">AWB changed</span>' : ''}
+      <small>Order ${hl(o.id, ql)} · ${hl([o.city, o.pin].filter(Boolean).join(' '), ql)} · ${esc(o.ps || sysStatus(o))}${moved(o) ? ' · ' + esc(nowTxt(o)) : ''}</small></div>`;
+  }).join('') : `<div class="none">No order matches “${esc(q)}”</div>`;
   $('dd').hidden = false;
 }
 $('q').addEventListener('input', renderDD);
@@ -528,11 +568,11 @@ function openOrder(o, opts){
 function renderDetail(scroll){
   const o = SEL; if (!o) return;
   const det = $('det');
+  const a = saAwbs(o);
   if (wide()) { $('rc').appendChild(det); $('rcEmpty').hidden = true; } else document.body.appendChild(det);
   det.hidden = false;
   if (!wide()) document.body.style.overflow = 'hidden';
   if (scroll) det.scrollTop = 0;
-  const a = awbs(o);
   $('dAwb').textContent = a[0] || o.id;
   $('dSub').textContent = 'Order ' + o.id + (a.length > 1 ? ' · ' + a.length + ' boxes' : o.box ? ' · ' + o.box + ' box' + (o.box == 1 ? '' : 'es') : '');
   $('dCard').innerHTML = `
@@ -541,6 +581,7 @@ function renderDetail(scroll){
     <div class="ln"><span>&#128205;</span><span>${esc([o.addr, o.city, o.st, o.pin].filter(Boolean).join(', '))}</span></div>
     ${o.ph ? `<div class="ln"><span>&#128222;</span><a href="tel:${esc(o.ph.replace(/[^\d+]/g, ''))}">${esc(o.ph)}</a></div>` : ''}
     ${a.length ? `<div class="awbs">${a.map(x => `<a href="https://shreeanjani.co.in/tracking/?awb=${encodeURIComponent(x)}" target="_blank" rel="noopener">${esc(x)}</a>`).join('')}</div>` : ''}
+    ${moved(o) ? `<div class="mvl">&#8635; AWB changed: this order moved from Shree Anjani ${esc(olds(o).join(', '))} to <b>${esc(o.cou)} ${esc(awbs(o).join(', '))}</b></div>` : ''}
     <div class="tags"><span class="chip">BoxUp: ${esc(sysStatus(o))}</span>${o.ps ? `<span class="chip ${chipCls(group(o))}">Partner: ${esc(o.ps)}</span>` : '<span class="chip">Partner: not updated yet</span>'}</div>
     <div class="hist">Booked ${esc(o.at || '')}${o.dd ? ' · dispatched ' + esc(o.dd) : ''}</div>`;
   $('podLinks').innerHTML = String(o.pod || '').split(/\s*,\s*/).filter(Boolean).map((u, i) => `<a href="${esc(u)}" target="_blank" rel="noopener">&#128196; POD ${i + 1} uploaded</a>`).join('');
@@ -587,7 +628,7 @@ function setPod(p){
   POD = p;
   const prev = $('podPrev'); prev.hidden = false;
   let msg = '';
-  if (p.read && p.read.o === SEL) msg = `<div class="ok">&#10003; ${p.read.by === 'awb' ? 'AWB ' + esc(p.read.key) : 'Order ' + esc(p.read.key)} read from the paper</div>`;
+  if (p.read && p.read.o === SEL) msg = `<div class="ok">&#10003; ${p.read.by === 'id' ? 'Order ' + esc(p.read.key) : 'AWB ' + esc(p.read.key)} read from the paper${p.read.by === 'old' ? ' (old Shree Anjani AWB)' : ''}</div>`;
   else if (p.read && p.read.o) msg = `<div class="warn">&#9888; This paper shows ${esc(p.read.key)}, which is order ${esc(p.read.o.id)} (${esc(p.read.o.name || '')}). <button type="button" class="x" id="podSwitch" style="color:var(--g2)">Open that order</button></div>`;
   else msg = `<div class="warn">Could not read the AWB on the photo. Check it is the right paper.</div>`;
   prev.innerHTML = `<img src="${p.url}" alt="POD"><div><div style="font-weight:700;font-size:13.5px">${esc(p.name || 'POD photo')}</div>${msg}<button type="button" class="x" id="podDel">Remove</button></div>`;
@@ -600,7 +641,7 @@ $('podCam').addEventListener('change', e => podFromFile(e.target.files[0]));
 $('podFile').addEventListener('change', e => podFromFile(e.target.files[0]));
 
 async function saveOne(o, st, pod, extra){
-  const body = { op:'set', id: o.id, awb: awbs(o)[0] || '', st: st || '', recv: (extra && extra.recv) || '', note: (extra && extra.note) || '',
+  const body = { op:'set', id: o.id, awb: saAwbs(o)[0] || '', st: st || '', recv: (extra && extra.recv) || '', note: (extra && extra.note) || '',
                  via: ((extra && extra.via) || 'Partner page') + ($('who').value.trim() ? ' · ' + $('who').value.trim() : '') };
   if (pod) body.pod = { name: pod.name || 'pod.jpg', mime: pod.mime || 'image/jpeg', data: await blobB64(pod.blob) };
   const d = await api(body, 90000);
@@ -618,7 +659,7 @@ $('saveBtn').addEventListener('click', async () => {
   const b = $('saveBtn'); b.disabled = true; b.innerHTML = '<span class="busy"></span> Saving…';
   try {
     await saveOne(o, ST, POD, { recv: $('recv').value.trim(), note: $('note').value.trim() });
-    toast('&#10004; Saved · ' + (awbs(o)[0] || o.id) + (ST ? ' · ' + ST_TXT[ST] : '') + (POD ? ' · POD uploaded' : ''));
+    toast('&#10004; Saved · ' + (saAwbs(o)[0] || o.id) + (ST ? ' · ' + ST_TXT[ST] : '') + (POD ? ' · POD uploaded' : ''));
     ST = ''; clearPod(); $('recv').value = ''; $('note').value = ''; setSt('');
     renderAll();
     if (!wide()) setTimeout(closeDetail, 600);
@@ -700,12 +741,14 @@ async function ocrText(cv){
   const r = await w.recognize(small);
   return (r && r.data && r.data.text) || '';
 }
+let LAST_READ = null;
 /* barcode first; if that finds nothing, read the printed text */
 async function readPaper(cv, onStep){
   const bc = await barcodes(cv);
   for (const v of bc) { const m = matchText(v); if (m) return Object.assign(m, { how: 'Barcode read' }); }
   if (onStep) onStep('Reading the text on the paper…');
-  try { const t = await ocrText(cv); const m = matchText(t); if (m) return Object.assign(m, { how: m.by === 'awb' ? 'AWB text read' : 'Order no. read' }); } catch (e) {}
+  LAST_READ = { codes: bc, text: '' };
+  try { const t = await ocrText(cv); LAST_READ.text = t; const m = matchText(t); if (m) return Object.assign(m, { how: m.by === 'id' ? 'Order no. read' : 'AWB text read' }); } catch (e) {}
   return null;
 }
 
@@ -759,7 +802,10 @@ function stopCam(){
 let lastMiss = '';
 function onCode(val){
   const m = matchText(val);
-  if (!m) { if (val !== lastMiss) { lastMiss = val; $('camHint').textContent = 'Read “' + val + '” but it is not a Shree Anjani order in the list'; } return false; }
+  if (!m) {
+    if (val !== lastMiss) { lastMiss = val; $('camHint').textContent = 'Read “' + val + '” but no order has this AWB'; if (/^\s*[A-Z0-9]{8,16}\s*$/i.test(val)) { LAST_READ = { codes: [val], text: '' }; stopCam(); showFound(null, null); } }
+    return false;
+  }
   if (navigator.vibrate) navigator.vibrate(80);
   stopCam(); showFound(m, null);
   return true;
@@ -767,23 +813,38 @@ function onCode(val){
 function showFound(m, photo){
   const f = $('found'); f.hidden = false;
   if (!m) {
-    f.innerHTML = `<div class="h">&#9888; AWB not found on the photo</div><div class="s">Try again with the barcode or AWB number clearly in the photo, or type the AWB below.</div>
-      <div class="fld" style="margin:0 0 10px"><input id="fTyped" inputmode="numeric" placeholder="Type AWB or order ID"></div>
-      <div class="b2"><button type="button" id="fRetry">Retake</button><button type="button" class="p" id="fGo">Find</button></div>`;
-    $('fRetry').onclick = () => setScanTab(scanMode);
-    $('fGo').onclick = () => { const mm = matchText($('fTyped').value); if (mm) showFound(mm, photo); else toast('No Shree Anjani order with that number'); };
+    const R = LAST_READ || {}, rel = related(R.text || ''), code = ((R.codes || []).find(c => /\d{8,}/.test(c)) || ((String(R.text || '').replace(/[ \-]/g, '').match(/\d{10,14}/) || [])[0]) || '').trim();
+    let RL = rel;
+    const draw = () => {
+      f.innerHTML = `<div class="h"><span class="chip nf">AWB not in BoxUp</span>${code ? ' ' + esc(code) : ''}</div>
+        <div class="s">${RL.length ? 'No order has this AWB. Related orders by <b>name + city</b>' + (R.text ? ' read from the photo' : '') + ':' : 'No order has this AWB' + (R.text ? ' and no name + city match on the photo' : '') + '. Search by name and city, or type the AWB:'}</div>
+        <div class="pick" id="fRel">${relHtml(RL)}</div>
+        <div class="fld" style="margin:10px 0"><input id="fTyped" placeholder="Name + city, AWB or order ID"></div>
+        <div class="b2"><button type="button" id="fRetry">Retake</button><button type="button" class="p" id="fGo">${RL.length ? 'Use selected order' : 'Find'}</button></div>`;
+      let sel = 0;
+      $('fRel').querySelectorAll('.rel').forEach(b => b.onclick = () => { sel = +b.dataset.ri; $('fRel').querySelectorAll('.rel').forEach(x => x.classList.toggle('on', x === b)); });
+      $('fRetry').onclick = () => setScanTab(scanMode);
+      $('fTyped').oninput = () => { const v = $('fTyped').value.trim(); if (v.length < 3) return; const mm = matchText(v); if (mm) { showFound(mm, photo); return; } RL = search(v).slice(0, 6).map(o => ({ o, name: true, city: v.toLowerCase().split(/\s+/).some(w => (o.city || '').toLowerCase().includes(w)), pin: 0 })); $('fRel').innerHTML = relHtml(RL); $('fGo').textContent = RL.length ? 'Use selected order' : 'Find'; sel = 0; $('fRel').querySelectorAll('.rel').forEach(b => b.onclick = () => { sel = +b.dataset.ri; $('fRel').querySelectorAll('.rel').forEach(x => x.classList.toggle('on', x === b)); }); };
+      $('fGo').onclick = () => {
+        const o = RL[sel] && RL[sel].o;
+        if (!o) { toast('Type a name and city, or the AWB'); return; }
+        closeScan(); openOrder(o, photo ? { pod: photo } : null);
+        if (code) $('note').value = 'Partner scanned AWB ' + code;
+      };
+    };
+    draw();
     return;
   }
   const o = m.o;
-  f.innerHTML = `<div class="h"><span class="chip delivered">&#10003; Found</span> ${esc(awbs(o)[0] || o.id)}</div>
-    <div class="s">${esc(o.name || '')} · ${esc(o.co || '')} · Order ${esc(o.id)} · ${esc(m.how || (m.by === 'awb' ? 'AWB read' : 'Order no. read'))}<br>Now: ${esc(o.ps ? 'Partner ' + o.ps : 'BoxUp ' + sysStatus(o))}</div>
+  f.innerHTML = `<div class="h">${m.by === 'old' ? '<span class="chip mv">AWB moved</span>' : '<span class="chip delivered">&#10003; Found</span>'} ${esc(m.by === 'old' ? m.key : saAwbs(o)[0] || o.id)}</div>
+    <div class="s">${m.by === 'old' ? 'This is the <b>old Shree Anjani AWB</b> of this order. ' : ''}${esc([o.name, o.co, 'Order ' + o.id].filter(Boolean).join(' · '))} · ${esc(m.how || (m.by === 'id' ? 'Order no. read' : 'AWB read'))}<br>Now: ${esc(o.ps ? 'Partner ' + o.ps : 'BoxUp ' + sysStatus(o))}${moved(o) ? '<br><b>' + esc(nowTxt(o)) + '</b>' : ''}</div>
     <div class="b2">${photo ? '<button type="button" class="p" id="fDel">&#9989; Delivered + save photo as POD</button>' : ''}<button type="button" id="fOpen">${photo ? 'Other status' : 'Open order'}</button>${photo ? '' : '<button type="button" class="p" id="fNext">Scan next</button>'}</div>`;
   $('fOpen').onclick = () => { closeScan(); openOrder(o, photo ? { pod: photo } : null); };
   if ($('fNext')) $('fNext').onclick = () => { closeScan(); openOrder(o); };
   if ($('fNext')) $('fNext').textContent = 'Update status';
   if ($('fDel')) $('fDel').onclick = async () => {
     const b = $('fDel'); b.disabled = true; b.innerHTML = '<span class="busy"></span> Saving…';
-    try { await saveOne(o, 'delivered', photo, { via: 'Scanner' }); toast('&#10004; ' + (awbs(o)[0] || o.id) + ' · Delivered · POD uploaded'); renderAll(); setScanTab('photo'); }
+    try { await saveOne(o, 'delivered', photo, { via: 'Scanner' }); toast('&#10004; ' + (saAwbs(o)[0] || o.id) + ' · Delivered · POD uploaded'); renderAll(); setScanTab('photo'); }
     catch (e) { toast('Not saved: ' + esc(e.message)); b.disabled = false; b.textContent = 'Try again'; }
   };
 }
