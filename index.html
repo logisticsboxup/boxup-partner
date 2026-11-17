@@ -213,7 +213,7 @@ a{color:var(--g2)}
 <header class="hd">
   <div class="hrow">
     <img class="lgimg" src="partner-logos.png" alt="BoxUp x Shree Anjani Courier Services">
-    <div class="ttl"><b>Partner update desk</b>Shree Anjani orders only</div>
+    <div class="ttl"><b>Partner update desk</b>All Label Log orders</div>
     <div class="sp"></div>
     <button class="hbtn" id="bulkBtn" type="button">&#11014; Bulk POD</button>
     <div class="sw">
@@ -360,6 +360,13 @@ function awbs(o){ return String(o.awb || '').split(/[,\s]+/).filter(Boolean); }
 function olds(o){ return String(o.old || '').split(/[,\s]+/).filter(Boolean); }
 const moved = o => !!(o.cou && !/anjani/i.test(o.cou) && olds(o).length);
 function saAwbs(o){ return moved(o) ? olds(o) : awbs(o); }               // the Shree Anjani AWB(s) the partner knows
+function trackUrl(cou, awb){
+  const c = String(cou || '').toLowerCase(), a = encodeURIComponent(awb);
+  if (/maru/.test(c)) return 'https://tracking.shreemaruti.com/' + a;
+  if (/dtdc/.test(c)) return 'https://www.dtdc.com/track-your-shipment/?awb=' + a;
+  if (/delhivery/.test(c)) return 'https://www.delhivery.com/track-v2/package/' + a;
+  return 'https://shreeanjani.co.in/tracking/?awb=' + a;
+}
 const nowTxt = o => moved(o) ? `Now ${o.cou} · ${awbs(o)[0] || ''}` : '';
 function sysStatus(o){                       // BoxUp / courier tracking, read only
   const os = String(o.os || '');
@@ -449,7 +456,7 @@ async function load(force){
     if (!d || !d.ok) throw new Error((d && d.error) || 'Could not read the orders');
     if (!d.same) { setOrders(d.orders || [], d.v || ''); store.set(CACHE_KEY, { at: Date.now(), v: d.v || '', orders: d.orders || [] }); }
     $('err').hidden = true; $('dot').style.background = '#2e7d32';
-    $('upd').textContent = 'Live · ' + ORDERS.length + ' Shree Anjani orders · checked ' + new Date().toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'});
+    $('upd').textContent = 'Live · ' + ORDERS.length + ' orders · checked ' + new Date().toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'});
   } catch (e) {
     $('dot').style.background = '#e0a43a';
     $('upd').textContent = ORDERS.length ? 'Showing saved list · could not refresh' : 'Not loaded';
@@ -489,7 +496,7 @@ function rowHtml(o){
   return `<button type="button" class="row st-${g}${SEL === o ? ' sel' : ''}" data-id="${esc(o.id)}">
     <div class="m"><div class="t">${esc(a[0] || o.id)} <span>· ${esc(o.name || o.co || '')}</span></div>
     <small>${esc([o.city, o.pin].filter(Boolean).join(' ') )} · ${esc(o.id)}${a.length > 1 ? ' · ' + a.length + ' boxes' : ''}</small>
-    <small>${esc(o.co || '')}</small>${moved(o) ? `<small style="color:#8a6100">&#8635; AWB changed · ${esc(nowTxt(o))}</small>` : ''}</div>
+    <small>${esc(o.co || '')}${o.cou && !/anjani/i.test(o.cou) && !moved(o) ? ' · ' + esc(o.cou) : ''}</small>${moved(o) ? `<small style="color:#8a6100">&#8635; AWB changed · ${esc(nowTxt(o))}</small>` : ''}</div>
     <div class="chips2">${o.ps ? partnerChip(o) : sysChip(o)}${o.pod ? '<span class="chip pod">POD &#10003;</span>' : ''}</div></button>`;
 }
 function renderList(){
@@ -580,7 +587,8 @@ function renderDetail(scroll){
     <div class="co">${esc(o.co || '')}${o.co ? ' · ' : ''}Order ${esc(o.id)}${o.box ? ' · ' + esc(o.box) + ' box' + (o.box == 1 ? '' : 'es') : ''}</div>
     <div class="ln"><span>&#128205;</span><span>${esc([o.addr, o.city, o.st, o.pin].filter(Boolean).join(', '))}</span></div>
     ${o.ph ? `<div class="ln"><span>&#128222;</span><a href="tel:${esc(o.ph.replace(/[^\d+]/g, ''))}">${esc(o.ph)}</a></div>` : ''}
-    ${a.length ? `<div class="awbs">${a.map(x => `<a href="https://shreeanjani.co.in/tracking/?awb=${encodeURIComponent(x)}" target="_blank" rel="noopener">${esc(x)}</a>`).join('')}</div>` : ''}
+    ${a.length ? `<div class="awbs">${a.map(x => `<a href="${esc(trackUrl(moved(o) ? 'Shree Anjani' : o.cou, x))}" target="_blank" rel="noopener">${esc(x)}</a>`).join('')}</div>` : ''}
+    ${o.cou && !/anjani/i.test(o.cou) && !moved(o) ? `<div class="mvl" style="color:#555;background:#f1efe8">Courier: <b>${esc(o.cou)}</b></div>` : ''}
     ${moved(o) ? `<div class="mvl">&#8635; AWB changed: this order moved from Shree Anjani ${esc(olds(o).join(', '))} to <b>${esc(o.cou)} ${esc(awbs(o).join(', '))}</b></div>` : ''}
     <div class="tags"><span class="chip">BoxUp: ${esc(sysStatus(o))}</span>${o.ps ? `<span class="chip ${chipCls(group(o))}">Partner: ${esc(o.ps)}</span>` : '<span class="chip">Partner: not updated yet</span>'}</div>
     <div class="hist">Booked ${esc(o.at || '')}${o.dd ? ' · dispatched ' + esc(o.dd) : ''}</div>`;
@@ -916,7 +924,7 @@ $('bkList').addEventListener('change', e => {
   const inp = e.target.closest('input[data-i]'); if (!inp) return;
   const it = BK[+inp.dataset.i]; it.typed = inp.value;
   const m = matchText(inp.value);
-  if (m) { it.m = Object.assign(m, { how: 'Typed' }); renderBulk(); } else toast('No Shree Anjani order with “' + esc(inp.value) + '”');
+  if (m) { it.m = Object.assign(m, { how: 'Typed' }); renderBulk(); } else toast('No order with “' + esc(inp.value) + '”');
 });
 $('bkSave').addEventListener('click', async () => {
   const st = $('bkSt').value, todo = BK.filter(x => x.m && !x.done);
