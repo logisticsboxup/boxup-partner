@@ -364,6 +364,8 @@ function trackUrl(cou, awb){
   const c = String(cou || '').toLowerCase(), a = encodeURIComponent(awb);
   if (/maru/.test(c)) return 'https://tracking.shreemaruti.com/' + a;
   if (/dtdc/.test(c)) return 'https://www.dtdc.com/track-your-shipment/?awb=' + a;
+  if (/mark\s*express/.test(c)) return 'https://crm.markerp.in/Frm_DocTrackWeb.aspx?docno=' + a;
+  if (/fed\s*ex/.test(c)) return 'https://www.fedex.com/fedextrack/?trknbr=' + a;
   if (/delhivery/.test(c)) return 'https://www.delhivery.com/track-v2/package/' + a;
   return 'https://shreeanjani.co.in/tracking/?awb=' + a;
 }
