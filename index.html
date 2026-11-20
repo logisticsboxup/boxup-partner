@@ -4,8 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1e4a2c">
-<title>BoxUp × Shree Anjani · Partner desk</title>
+<title>BoxUp Partner</title>
 <link rel="icon" href="favicon.png">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="BoxUp Partner">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <style>
@@ -186,7 +191,31 @@ a{color:var(--g2)}
 .bi .rm{border:0;background:transparent;color:var(--mu);font-size:20px}
 .toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#1b1f1c;color:#fff;padding:11px 16px;border-radius:12px;font-weight:600;font-size:14px;z-index:90;box-shadow:0 6px 20px rgba(0,0,0,.3);max-width:92vw;text-align:center}
 
-@media (max-width:560px){.ttl{display:none}.lgimg{height:40px}}
+.lgimg.bx{box-shadow:none;border-radius:0;height:50px}
+.hbtn.who{background:#fff;color:var(--g);border-color:#fff;max-width:240px;overflow:hidden;text-overflow:ellipsis}
+.hbtn.who b{font-weight:800}
+.cou{margin-bottom:8px}
+.cou button{border-radius:10px;border-color:#cfd9cf;color:var(--g);background:#eef5ef}
+.cou button i{font-style:normal;font-weight:800;margin-left:4px;opacity:.6}
+.cou button.on{background:#c8862a;border-color:#c8862a;color:#fff}
+.cb{display:inline-block;font-size:10.5px;font-weight:800;border-radius:6px;padding:1px 6px;margin-right:6px;vertical-align:2px;background:var(--g);color:#fff;white-space:nowrap}
+.cb.ma{background:#b3261e}.cb.sm{background:#5b3fa0}.cb.bd{background:#0b5fa5}.cb.dl{background:#d13b3b}.cb.dt{background:#c25e00}.cb.po{background:#2f6fed}.cb.no{background:#8b877c}
+.inst{display:flex;align-items:center;gap:12px;background:#fff;border:1.5px solid #cfe0d2;border-radius:14px;padding:10px 12px;margin-bottom:12px}
+.inst img{width:42px;height:42px;border-radius:10px;border:1px solid var(--ln);flex:none}
+.inst div{flex:1;font-size:13px;line-height:1.3;color:var(--mu)}.inst div b{display:block;font-size:14px;color:var(--ink)}
+.inst .ib{border:0;background:var(--g);color:#fff;font-weight:700;border-radius:10px;padding:9px 14px}
+.inst .ix{border:0;background:transparent;color:var(--mu);font-size:22px;padding:0 4px}
+.whoMod{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:95;display:flex;align-items:flex-end;justify-content:center}
+.whoBox{background:#fff;width:100%;max-width:520px;border-radius:20px 20px 0 0;padding:18px 18px calc(22px + env(safe-area-inset-bottom));max-height:92vh;overflow:auto}
+.whoBox h3{margin:0;font-size:17px}.whoBox p{font-size:13px;color:var(--mu);margin:4px 0 10px}
+.whoBox .opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:11px 12px;border:1.5px solid var(--ln);background:#fff;border-radius:12px;margin-top:7px;font-weight:600;font-size:15px;color:var(--ink)}
+.whoBox .opt.on{border-color:var(--g);background:var(--gl)}
+.whoBox input{display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:11px;border:1.5px solid #cfd9cf;border-radius:10px;font-size:15px}
+.whoBox .go{margin-top:12px;width:100%;border:0;background:var(--g);color:#fff;padding:13px;border-radius:12px;font-weight:700;font-size:15px}
+.whoBox .go:disabled{opacity:.5}
+.savingas{font-size:12.5px;color:var(--mu);margin-top:12px}.savingas button{border:0;background:none;color:var(--g);font-weight:700;text-decoration:underline;padding:0}
+@media (min-width:900px){.whoMod{align-items:center}.whoBox{border-radius:18px}}
+@media (max-width:560px){.ttl{display:none}.lgimg.bx{height:44px}.hbtn.who{max-width:200px}}
 /* ---------- laptop ---------- */
 @media (min-width:900px){
   .hd{padding:10px 20px}
@@ -212,14 +241,15 @@ a{color:var(--g2)}
 
 <header class="hd">
   <div class="hrow">
-    <img class="lgimg" src="partner-logos.png" alt="BoxUp x Shree Anjani Courier Services">
-    <div class="ttl"><b>Partner update desk</b>All Label Log orders</div>
+    <img class="lgimg bx" src="logo-white.png" alt="BoxUp Luxury Gifting">
+    <div class="ttl"><b>Partner update desk</b>All couriers · one common link</div>
     <div class="sp"></div>
+    <button class="hbtn who" id="whoBtn" type="button">&#128100; <span id="whoTxt">Who is updating?</span> &#9662;</button>
     <button class="hbtn" id="bulkBtn" type="button">&#11014; Bulk POD</button>
     <div class="sw">
       <div class="sb">
         <span class="ic">&#128269;</span>
-        <input id="q" type="search" placeholder="Search AWB, name or order ID…" autocomplete="off" enterkeyhint="search">
+        <input id="q" type="search" placeholder="Search or scan any AWB, order ID or name…" autocomplete="off" enterkeyhint="search">
         <button class="clr" id="qx" type="button" hidden aria-label="Clear">&times;</button>
         <button class="scan" id="scanBtn" type="button" aria-label="Scan barcode or POD">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 8v8M10 8v8M13 8v8M16 8v8"/></svg>
@@ -233,6 +263,7 @@ a{color:var(--g2)}
 <main class="wrap">
   <div class="cols">
     <section class="lc">
+      <div class="inst" id="inst" hidden><img src="icon-192.png" alt=""><div><b>Install BoxUp Partner</b><span id="instTxt">Open it like an app from your home screen</span></div><button type="button" class="ib" id="instBtn">Install</button><button type="button" class="ix" id="instX" aria-label="Hide">&times;</button></div>
       <div class="status-line"><i class="dot" id="dot"></i><span id="upd">Loading orders…</span></div>
       <div class="err" id="err" hidden></div>
       <div class="kp" id="kp">
@@ -241,6 +272,7 @@ a{color:var(--g2)}
         <button type="button" data-f="delivered"><b id="kDel">–</b><span>Delivered</span></button>
         <button type="button" data-f="podpending" class="pp"><b id="kPod">–</b><span>POD pending</span></button>
       </div>
+      <div class="chips cou" id="couChips"></div>
       <div class="chips" id="chips">
         <button type="button" data-f="all" class="on">All</button>
         <button type="button" data-f="booked">Booked</button>
@@ -249,7 +281,7 @@ a{color:var(--g2)}
         <button type="button" data-f="delivered">Delivered</button>
         <button type="button" data-f="podpending">POD pending</button>
         <button type="button" data-f="problem">Failed / RTO</button>
-        <button type="button" data-f="updated">Updated by you</button>
+        <button type="button" data-f="updated">Updated from this phone</button>
       </div>
       <div class="lh"><span id="lhT">Orders</span><span id="lhN"></span></div>
       <div id="list"></div>
@@ -289,7 +321,7 @@ a{color:var(--g2)}
           <div class="podprev" id="podPrev" hidden></div>
           <div class="podlinks" id="podLinks"></div>
         </div>
-        <label class="fld"><span>Your name (saved on this phone)</span><input id="who" placeholder="Who is updating" autocomplete="name"></label>
+        <div class="savingas" id="savingAs"></div>
         <div class="hist" id="dHist"></div>
         <div class="savebar"><button class="big" id="saveBtn" type="button" disabled>&#10004; Save update</button></div>
       </div>
@@ -327,6 +359,13 @@ a{color:var(--g2)}
   </div>
 </div>
 
+<div class="whoMod" id="whoMod" hidden><div class="whoBox">
+  <h3>Who is updating?</h3>
+  <p>Every status change and POD you save is stamped with this name, so BoxUp knows who updated it. Asked once, remembered on this phone.</p>
+  <div id="whoOpts"></div>
+  <label style="display:block;margin-top:12px;font-size:13px;color:var(--mu)">Your name<input id="whoName" placeholder="e.g. Ravi" autocomplete="name"></label>
+  <button type="button" class="go" id="whoGo">Continue</button>
+</div></div>
 <div class="toast" id="toast" hidden></div>
 
 <script>
@@ -358,8 +397,8 @@ const PS = { 'Picked up':'picked', 'In transit':'transit', 'Out for delivery':'o
 const ST_TXT = { picked:'Picked up', transit:'In transit', ofd:'Out for delivery', delivered:'Delivered', failed:'Attempt failed', rto:'RTO' };
 function awbs(o){ return String(o.awb || '').split(/[,\s]+/).filter(Boolean); }
 function olds(o){ return String(o.old || '').split(/[,\s]+/).filter(Boolean); }
-const moved = o => !!(o.cou && !/anjani/i.test(o.cou) && olds(o).length);
-function saAwbs(o){ return moved(o) ? olds(o) : awbs(o); }               // the Shree Anjani AWB(s) the partner knows
+const moved = o => !!(olds(o).length && awbs(o).length);   // AWB changed (old AWBs still scan)
+function saAwbs(o){ return awbs(o).length ? awbs(o) : olds(o); }            // the current AWB(s)
 function trackUrl(cou, awb){
   const c = String(cou || '').toLowerCase(), a = encodeURIComponent(awb);
   if (/maru/.test(c)) return 'https://tracking.shreemaruti.com/' + a;
@@ -367,9 +406,20 @@ function trackUrl(cou, awb){
   if (/mark\s*express/.test(c)) return 'https://crm.markerp.in/Frm_DocTrackWeb.aspx?docno=' + a;
   if (/fed\s*ex/.test(c)) return 'https://www.fedex.com/fedextrack/?trknbr=' + a;
   if (/delhivery/.test(c)) return 'https://www.delhivery.com/track-v2/package/' + a;
-  return 'https://shreeanjani.co.in/tracking/?awb=' + a;
+  if (/blue\s*dart|shiprocket/.test(c)) return 'https://shiprocket.co/tracking/' + a;
+  if (/anjani/.test(c) || (!c && /^19\d{8}$/.test(awb))) return 'https://shreeanjani.co.in/tracking/?awb=' + a;
+  return '';
 }
-const nowTxt = o => moved(o) ? `Now ${o.cou} · ${awbs(o)[0] || ''}` : '';
+const COU_LIST = ['Shree Anjani', 'Shree Maruthi', 'Mark Express', 'Blue Dart', 'Delhivery', 'DTDC', 'Porter'];
+function couName(o){
+  const c = String(o.cou || '').toLowerCase();
+  if (/anjani/.test(c)) return 'Shree Anjani'; if (/maru/.test(c)) return 'Shree Maruthi'; if (/mark\s*exp/.test(c)) return 'Mark Express';
+  if (/blue\s*dart|shiprocket/.test(c)) return 'Blue Dart'; if (/delhivery/.test(c)) return 'Delhivery'; if (/dtdc/.test(c)) return 'DTDC'; if (/porter/.test(c)) return 'Porter';
+  return o.cou ? String(o.cou).trim() : 'No courier';
+}
+function couTag(o){ const n = couName(o), k = { 'Mark Express':'ma', 'Shree Maruthi':'sm', 'Blue Dart':'bd', 'Delhivery':'dl', 'DTDC':'dt', 'Porter':'po', 'No courier':'no' }[n] || ''; return `<span class="cb ${k}">${esc(n)}</span>`; }
+let COU = 'all';
+const nowTxt = o => moved(o) ? `Old AWB ${olds(o).join(', ')}` : '';
 function sysStatus(o){                       // BoxUp / courier tracking, read only
   const os = String(o.os || '');
   if (/^(delivered|out for delivery|in transit|at destination|dispatched)$/i.test(os)) return os;
@@ -445,7 +495,7 @@ function related(text){
 function relHtml(list){
   return list.map((r, i) => { const o = r.o, a = saAwbs(o);
     return `<button type="button" class="rel${i === 0 ? ' on' : ''}" data-ri="${i}"><b>${esc(o.id)}</b> · ${esc(o.name || o.co || '')} ${o.ps ? partnerChip(o) : sysChip(o)}
-      <small>${esc([o.city, o.pin].filter(Boolean).join(' · '))}${a[0] ? ' · Shree Anjani ' + esc(a[0]) : ''}${moved(o) ? ' · ' + esc(nowTxt(o)) : ''}</small>
+      <small>${esc([o.city, o.pin].filter(Boolean).join(' · '))}${a[0] ? ' · ' + esc(couName(o)) + ' ' + esc(a[0]) : ''}${moved(o) ? ' · ' + esc(nowTxt(o)) : ''}</small>
       <div class="why"><span class="${r.name || r.comp ? 'y' : 'n'}">${r.name || r.comp ? '&#10003;' : '&#10007;'} Name</span> &nbsp;<span class="${r.city ? 'y' : 'n'}">${r.city ? '&#10003;' : '&#10007;'} City</span> &nbsp;<span class="${r.pin ? 'y' : 'n'}">${r.pin === 2 ? '&#10003;' : r.pin ? '&#8776;' : '&#10007;'} Pincode</span></div></button>`; }).join('');
 }
 
@@ -474,8 +524,10 @@ function setOrders(list, v){
 }
 
 /* ---------- list ---------- */
+const inCou = o => COU === 'all' || couName(o) === COU;
 function filtered(){
   return ORDERS.filter(o => {
+    if (!inCou(o)) return false;
     const g = group(o);
     if (FILTER === 'all') return true;
     if (FILTER === 'podpending') return g === 'delivered' && !o.pod;
@@ -486,7 +538,11 @@ function filtered(){
 }
 function renderAll(){
   let b = 0, t = 0, dl = 0, pp = 0;
-  ORDERS.forEach(o => { const g = group(o); if (g === 'booked') b++; else if (g === 'transit' || g === 'ofd') t++; else if (g === 'delivered') { dl++; if (!o.pod) pp++; } });
+  const cc = {}; ORDERS.forEach(o => { const n = couName(o); cc[n] = (cc[n] || 0) + 1; });
+  const names = COU_LIST.filter(n => cc[n]).concat(Object.keys(cc).filter(n => !COU_LIST.includes(n)).sort((a, b) => cc[b] - cc[a]));
+  if (COU !== 'all' && !cc[COU] && ORDERS.length) COU = 'all';
+  $('couChips').innerHTML = `<button type="button" data-c="all" class="${COU === 'all' ? 'on' : ''}">All couriers <i>${ORDERS.length}</i></button>` + names.map(n => `<button type="button" data-c="${esc(n)}" class="${COU === n ? 'on' : ''}">${esc(n)} <i>${cc[n]}</i></button>`).join('');
+  ORDERS.forEach(o => { if (!inCou(o)) return; const g = group(o); if (g === 'booked') b++; else if (g === 'transit' || g === 'ofd') t++; else if (g === 'delivered') { dl++; if (!o.pod) pp++; } });
   $('kBooked').textContent = b; $('kTransit').textContent = t; $('kDel').textContent = dl; $('kPod').textContent = pp;
   document.querySelectorAll('#kp button').forEach(x => x.classList.toggle('on', x.dataset.f === FILTER));
   document.querySelectorAll('#chips button').forEach(x => x.classList.toggle('on', x.dataset.f === FILTER));
@@ -496,15 +552,15 @@ function renderAll(){
 function rowHtml(o){
   const g = group(o), a = saAwbs(o);
   return `<button type="button" class="row st-${g}${SEL === o ? ' sel' : ''}" data-id="${esc(o.id)}">
-    <div class="m"><div class="t">${esc(a[0] || o.id)} <span>· ${esc(o.name || o.co || '')}</span></div>
+    <div class="m"><div class="t">${couTag(o)}${esc(a[0] || o.id)} <span>· ${esc(o.name || o.co || '')}</span></div>
     <small>${esc([o.city, o.pin].filter(Boolean).join(' ') )} · ${esc(o.id)}${a.length > 1 ? ' · ' + a.length + ' boxes' : ''}</small>
-    <small>${esc(o.co || '')}${o.cou && !/anjani/i.test(o.cou) && !moved(o) ? ' · ' + esc(o.cou) : ''}</small>${moved(o) ? `<small style="color:#8a6100">&#8635; AWB changed · ${esc(nowTxt(o))}</small>` : ''}</div>
+    <small>${esc(o.co || '')}</small>${moved(o) ? `<small style="color:#8a6100">&#8635; AWB changed · ${esc(nowTxt(o))}</small>` : ''}</div>
     <div class="chips2">${o.ps ? partnerChip(o) : sysChip(o)}${o.pod ? '<span class="chip pod">POD &#10003;</span>' : ''}</div></button>`;
 }
 function renderList(){
   const L = filtered();
   const names = { all:'All orders', booked:'Booked (not picked up yet)', transit:'In transit', ofd:'Out for delivery', delivered:'Delivered', podpending:'Delivered, POD not uploaded', problem:'Attempt failed / RTO', updated:'Updated from this phone' };
-  $('lhT').textContent = names[FILTER] || 'Orders';
+  $('lhT').textContent = (names[FILTER] || 'Orders') + (COU !== 'all' ? ' · ' + COU : '');
   $('lhN').textContent = L.length + ' orders';
   $('list').innerHTML = L.length ? L.slice(0, SHOWN).map(rowHtml).join('') + (L.length > SHOWN ? `<button type="button" class="more" id="moreBtn">Show more (${L.length - SHOWN} left)</button>` : '')
     : `<div class="empty">${ORDERS.length ? 'No orders here.' : 'Loading…'}</div>`;
@@ -514,6 +570,7 @@ $('list').addEventListener('click', e => {
   const r = e.target.closest('.row'); if (r) openOrder(IDX.get(r.dataset.id.toUpperCase()));
 });
 function setFilter(f){ FILTER = f; SHOWN = 120; renderAll(); if (!wide()) window.scrollTo({top:0, behavior:'smooth'}); }
+$('couChips').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { COU = b.dataset.c; SHOWN = 120; renderAll(); } });
 $('chips').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setFilter(b.dataset.f); });
 $('kp').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setFilter(FILTER === b.dataset.f ? 'all' : b.dataset.f); });
 
@@ -545,7 +602,7 @@ function renderDD(){
   const ql = q.toLowerCase();
   $('dd').innerHTML = ddList.length ? ddList.map((o, i) => {
     const a = saAwbs(o).concat(awbs(o)), aw = a.find(x => x.includes(ql.replace(/\s+/g, ''))) || a[0] || '';
-    return `<div class="it${i === 0 ? ' on' : ''}" data-i="${i}"><b>${hl(aw, ql)}</b> · ${hl(o.name || o.co, ql)}${moved(o) ? ' <span class="chip mv">AWB changed</span>' : ''}
+    return `<div class="it${i === 0 ? ' on' : ''}" data-i="${i}">${couTag(o)}<b>${hl(aw, ql)}</b> · ${hl(o.name || o.co, ql)}${moved(o) ? ' <span class="chip mv">AWB changed</span>' : ''}
       <small>Order ${hl(o.id, ql)} · ${hl([o.city, o.pin].filter(Boolean).join(' '), ql)} · ${esc(o.ps || sysStatus(o))}${moved(o) ? ' · ' + esc(nowTxt(o)) : ''}</small></div>`;
   }).join('') : `<div class="none">No order matches “${esc(q)}”</div>`;
   $('dd').hidden = false;
@@ -589,9 +646,9 @@ function renderDetail(scroll){
     <div class="co">${esc(o.co || '')}${o.co ? ' · ' : ''}Order ${esc(o.id)}${o.box ? ' · ' + esc(o.box) + ' box' + (o.box == 1 ? '' : 'es') : ''}</div>
     <div class="ln"><span>&#128205;</span><span>${esc([o.addr, o.city, o.st, o.pin].filter(Boolean).join(', '))}</span></div>
     ${o.ph ? `<div class="ln"><span>&#128222;</span><a href="tel:${esc(o.ph.replace(/[^\d+]/g, ''))}">${esc(o.ph)}</a></div>` : ''}
-    ${a.length ? `<div class="awbs">${a.map(x => `<a href="${esc(trackUrl(moved(o) ? 'Shree Anjani' : o.cou, x))}" target="_blank" rel="noopener">${esc(x)}</a>`).join('')}</div>` : ''}
-    ${o.cou && !/anjani/i.test(o.cou) && !moved(o) ? `<div class="mvl" style="color:#555;background:#f1efe8">Courier: <b>${esc(o.cou)}</b></div>` : ''}
-    ${moved(o) ? `<div class="mvl">&#8635; AWB changed: this order moved from Shree Anjani ${esc(olds(o).join(', '))} to <b>${esc(o.cou)} ${esc(awbs(o).join(', '))}</b></div>` : ''}
+    ${a.length ? `<div class="awbs">${a.map(x => (trackUrl(o.cou, x) ? `<a href="${esc(trackUrl(o.cou, x))}" target="_blank" rel="noopener">${esc(x)}</a>` : `<a>${esc(x)}</a>`)).join('')}</div>` : ''}
+    <div class="mvl" style="color:#555;background:#f1efe8">Courier: <b>${esc(couName(o))}</b></div>
+    ${moved(o) ? `<div class="mvl">&#8635; AWB changed: old AWB ${esc(olds(o).join(', '))}, now <b>${esc(couName(o))} ${esc(awbs(o).join(', '))}</b></div>` : ''}
     <div class="tags"><span class="chip">BoxUp: ${esc(sysStatus(o))}</span>${o.ps ? `<span class="chip ${chipCls(group(o))}">Partner: ${esc(o.ps)}</span>` : '<span class="chip">Partner: not updated yet</span>'}</div>
     <div class="hist">Booked ${esc(o.at || '')}${o.dd ? ' · dispatched ' + esc(o.dd) : ''}</div>`;
   $('podLinks').innerHTML = String(o.pod || '').split(/\s*,\s*/).filter(Boolean).map((u, i) => `<a href="${esc(u)}" target="_blank" rel="noopener">&#128196; POD ${i + 1} uploaded</a>`).join('');
@@ -619,8 +676,33 @@ function refreshSave(){
   b.disabled = !SEL || (!ST && !POD);
   b.innerHTML = !ST && POD ? '&#10004; Save POD' : ST === 'delivered' && POD ? '&#10004; Save · Delivered + POD' : ST ? '&#10004; Save · ' + ST_TXT[ST] : '&#10004; Save update';
 }
-$('who').value = store.get(WHO_KEY, '');
-$('who').addEventListener('change', () => store.set(WHO_KEY, $('who').value.trim()));
+/* ---------- who is updating (company + name, saved on this phone) ---------- */
+const WHO_COS = ['BoxUp team', 'Shree Anjani', 'Shree Maruthi', 'Mark Express', 'Delhivery', 'Blue Dart', 'DTDC', 'Porter', 'Other'];
+let WHO = (() => { const w = store.get(WHO_KEY, null); return w && typeof w === 'object' ? w : { co:'', name: typeof w === 'string' ? w : '' }; })();
+const whoTxt = () => WHO.co ? (WHO.name ? WHO.name + ' (' + WHO.co + ')' : WHO.co) : (WHO.name || '');
+function whoPaint(){
+  $('whoTxt').innerHTML = WHO.co ? 'Updating as: <b>' + esc(WHO.name || WHO.co) + '</b>' + (WHO.name ? ' · ' + esc(WHO.co) : '') : 'Who is updating?';
+  $('savingAs').innerHTML = WHO.co ? 'Saving as <b>' + esc(whoTxt()) + '</b> · <button type="button" id="whoChg">change</button>' : '<button type="button" id="whoChg">Tell us who is updating</button>';
+  const c = $('whoChg'); if (c) c.onclick = whoOpen;
+}
+let whoPick = '';
+function whoOpen(){
+  whoPick = WHO.co || '';
+  $('whoOpts').innerHTML = WHO_COS.map(c => `<button type="button" class="opt${c === whoPick ? ' on' : ''}" data-c="${esc(c)}">${c === whoPick ? '&#9673;' : '&#9675;'} ${esc(c)}</button>`).join('');
+  $('whoName').value = WHO.name || ''; $('whoGo').disabled = !whoPick; $('whoMod').hidden = false;
+}
+$('whoOpts').addEventListener('click', e => { const b = e.target.closest('.opt'); if (!b) return; whoPick = b.dataset.c;
+  document.querySelectorAll('#whoOpts .opt').forEach(x => { const on = x.dataset.c === whoPick; x.classList.toggle('on', on); x.innerHTML = (on ? '&#9673; ' : '&#9675; ') + esc(x.dataset.c); });
+  $('whoGo').disabled = false; });
+$('whoGo').addEventListener('click', () => {
+  if (!whoPick) return;
+  const first = !WHO.co;
+  WHO = { co: whoPick, name: $('whoName').value.trim() }; store.set(WHO_KEY, WHO); $('whoMod').hidden = true; whoPaint();
+  if (first && COU_LIST.includes(whoPick)) { COU = whoPick; renderAll(); }    // a partner first sees its own orders
+});
+$('whoMod').addEventListener('click', e => { if (e.target.id === 'whoMod' && WHO.co) $('whoMod').hidden = true; });
+$('whoBtn').addEventListener('click', whoOpen);
+whoPaint();
 
 /* POD picked in the detail view */
 async function podFromFile(file){
@@ -652,7 +734,7 @@ $('podFile').addEventListener('change', e => podFromFile(e.target.files[0]));
 
 async function saveOne(o, st, pod, extra){
   const body = { op:'set', id: o.id, awb: saAwbs(o)[0] || '', st: st || '', recv: (extra && extra.recv) || '', note: (extra && extra.note) || '',
-                 via: ((extra && extra.via) || 'Partner page') + ($('who').value.trim() ? ' · ' + $('who').value.trim() : '') };
+                 via: ((extra && extra.via) || 'Partner page') + (whoTxt() ? ' · ' + whoTxt() : '') };
   if (pod) body.pod = { name: pod.name || 'pod.jpg', mime: pod.mime || 'image/jpeg', data: await blobB64(pod.blob) };
   const d = await api(body, 90000);
   if (!d || !d.ok) throw new Error((d && d.error) || 'Not saved');
@@ -665,7 +747,6 @@ async function saveOne(o, st, pod, extra){
 $('saveBtn').addEventListener('click', async () => {
   const o = SEL; if (!o || (!ST && !POD)) return;
   if (ST === 'failed' && !$('note').value.trim()) { $('note').focus(); toast('Add the reason for the failed attempt'); return; }
-  store.set(WHO_KEY, $('who').value.trim());
   const b = $('saveBtn'); b.disabled = true; b.innerHTML = '<span class="busy"></span> Saving…';
   try {
     await saveOne(o, ST, POD, { recv: $('recv').value.trim(), note: $('note').value.trim() });
@@ -846,8 +927,8 @@ function showFound(m, photo){
     return;
   }
   const o = m.o;
-  f.innerHTML = `<div class="h">${m.by === 'old' ? '<span class="chip mv">AWB moved</span>' : '<span class="chip delivered">&#10003; Found</span>'} ${esc(m.by === 'old' ? m.key : saAwbs(o)[0] || o.id)}</div>
-    <div class="s">${m.by === 'old' ? 'This is the <b>old Shree Anjani AWB</b> of this order. ' : ''}${esc([o.name, o.co, 'Order ' + o.id].filter(Boolean).join(' · '))} · ${esc(m.how || (m.by === 'id' ? 'Order no. read' : 'AWB read'))}<br>Now: ${esc(o.ps ? 'Partner ' + o.ps : 'BoxUp ' + sysStatus(o))}${moved(o) ? '<br><b>' + esc(nowTxt(o)) + '</b>' : ''}</div>
+  f.innerHTML = `<div class="h">${m.by === 'old' ? '<span class="chip mv">Old AWB</span>' : '<span class="chip delivered">&#10003; Found</span>'} ${esc(m.by === 'old' ? m.key : saAwbs(o)[0] || o.id)}</div>
+    <div class="s">${m.by === 'old' ? 'This is an <b>old AWB</b> of this order. ' : ''}${esc([o.name, o.co, 'Order ' + o.id].filter(Boolean).join(' · '))} · ${esc(m.how || (m.by === 'id' ? 'Order no. read' : 'AWB read'))}<br>Now: ${esc(o.ps ? 'Partner ' + o.ps : 'BoxUp ' + sysStatus(o))}${moved(o) ? '<br><b>' + esc(nowTxt(o)) + '</b>' : ''}</div>
     <div class="b2">${photo ? '<button type="button" class="p" id="fDel">&#9989; Delivered + save photo as POD</button>' : ''}<button type="button" id="fOpen">${photo ? 'Other status' : 'Open order'}</button>${photo ? '' : '<button type="button" class="p" id="fNext">Scan next</button>'}</div>`;
   $('fOpen').onclick = () => { closeScan(); openOrder(o, photo ? { pod: photo } : null); };
   if ($('fNext')) $('fNext').onclick = () => { closeScan(); openOrder(o); };
@@ -961,6 +1042,17 @@ window.addEventListener('popstate', () => { if (!$('scanMod').hidden) closeScan(
   const p = new URLSearchParams(location.search).get('awb') || new URLSearchParams(location.search).get('q');
   load().then(() => { if (p) { const m = matchText(p); if (m) openOrder(m.o); else { $('q').value = p; renderDD(); } } });
 })();
+/* ---------- install as an app (home screen) ---------- */
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+let instEv = null;
+const instHidden = () => { try { return localStorage.getItem('boxup.partner.instx') === '1'; } catch (e) { return false; } };
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); instEv = e; if (!standalone() && !instHidden()) $('inst').hidden = false; });
+if (!standalone() && !instHidden() && /iphone|ipad|ipod/i.test(navigator.userAgent)) { $('inst').hidden = false; $('instTxt').innerHTML = 'Tap <b>Share</b> &#8679; then <b>Add to Home Screen</b>'; $('instBtn').hidden = true; }
+$('instBtn').addEventListener('click', async () => { if (!instEv) { toast('Open the Chrome menu &#8942; and tap <b>Install app</b>'); return; } instEv.prompt(); try { await instEv.userChoice; } catch (e) {} instEv = null; $('inst').hidden = true; });
+$('instX').addEventListener('click', () => { $('inst').hidden = true; try { localStorage.setItem('boxup.partner.instx', '1'); } catch (e) {} });
+window.addEventListener('appinstalled', () => { $('inst').hidden = true; toast('&#10004; BoxUp Partner installed'); });
+if (!WHO.co) whoOpen();
 setInterval(() => { if (!document.hidden && $('scanMod').hidden && $('bulkMod').hidden) load(); }, 60000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
 </script>
