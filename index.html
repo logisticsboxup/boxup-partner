@@ -851,6 +851,7 @@ function openScan(){
 }
 function closeScan(){ stopCam(); $('scanMod').hidden = true; if ($('det').hidden || wide()) document.body.style.overflow = ''; }
 $('scanBtn').addEventListener('click', openScan);
+$('camBox').addEventListener('click', () => { if (scanMode === 'live' && camPaused) resumeCam(); });
 $('scanX').addEventListener('click', closeScan);
 document.querySelectorAll('#scanMod .tabs button').forEach(b => b.addEventListener('click', () => setScanTab(b.dataset.t)));
 function setScanTab(t){
@@ -859,8 +860,19 @@ function setScanTab(t){
   $('camBox').hidden = t !== 'live'; $('photoBox').hidden = t !== 'photo';
   if (t === 'live') startCam(); else { stopCam(); $('phImg').hidden = true; $('phMsg').textContent = 'Take a clear photo of the signed POD paper. The AWB or order number on it is read automatically.'; }
 }
+/* the camera is kept open while the scanner is open: after a read the picture is frozen (not switched off),
+   and scanning goes on again from the same stream. Asking the phone for the camera again right after closing it
+   is what gave a black, empty scanner on some phones. */
+let camPaused = false;
+function pauseCam(){ camPaused = true; try { $('vid').pause(); } catch (e) {} $('camHint').textContent = 'Tap the picture to scan the next barcode'; }
+function resumeCam(){
+  if (!stream || !stream.active || !stream.getVideoTracks().some(t => t.readyState === 'live')) { startCam(); return; }
+  camPaused = false; lastMiss = ''; $('found').hidden = true;
+  const v = $('vid'); v.play().catch(() => {});
+  $('camHint').textContent = 'Point at the barcode on the label or the POD paper';
+}
 async function startCam(){
-  stopCam();
+  stopCam(); camPaused = false;
   $('camHint').textContent = 'Starting camera…';
   try {
     stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
@@ -870,7 +882,8 @@ async function startCam(){
       const det = new BarcodeDetector();
       const tick = async () => {
         if (!stream) return;
-        try { const r = await det.detect(v); for (const b of r) { if (onCode(b.rawValue)) return; } } catch (e) {}
+        if (camPaused) { scanTimer = setTimeout(tick, 300); return; }
+        try { const r = await det.detect(v); for (const b of r) { if (onCode(b.rawValue)) break; } } catch (e) {}
         scanTimer = setTimeout(tick, 220);
       };
       tick();
@@ -878,8 +891,8 @@ async function startCam(){
       await loadScript(LIB.zxing);
       const rd = new ZXing.BrowserMultiFormatReader();
       zxCtl = rd;
-      rd.decodeFromVideoElementContinuously ? rd.decodeFromVideoElementContinuously(v, (res) => { if (res) onCode(res.getText()); })
-        : rd.decodeFromStream(stream, v, (res) => { if (res) onCode(res.getText()); });
+      rd.decodeFromVideoElementContinuously ? rd.decodeFromVideoElementContinuously(v, (res) => { if (res && !camPaused) onCode(res.getText()); })
+        : rd.decodeFromStream(stream, v, (res) => { if (res && !camPaused) onCode(res.getText()); });
     }
   } catch (e) {
     $('camHint').innerHTML = 'Camera not available (' + esc(e.name || e.message) + '). Allow the camera for this site, or use <b>Photo of POD</b>.';
@@ -894,11 +907,11 @@ let lastMiss = '';
 function onCode(val){
   const m = matchText(val);
   if (!m) {
-    if (val !== lastMiss) { lastMiss = val; $('camHint').textContent = 'Read “' + val + '” but no order has this AWB'; if (/^\s*[A-Z0-9]{8,16}\s*$/i.test(val)) { LAST_READ = { codes: [val], text: '' }; stopCam(); showFound(null, null); } }
+    if (val !== lastMiss) { lastMiss = val; $('camHint').textContent = 'Read “' + val + '” but no order has this AWB'; if (/^\s*[A-Z0-9]{8,16}\s*$/i.test(val)) { LAST_READ = { codes: [val], text: '' }; pauseCam(); showFound(null, null); } }
     return false;
   }
   if (navigator.vibrate) navigator.vibrate(80);
-  stopCam(); showFound(m, null);
+  pauseCam(); showFound(m, null);
   return true;
 }
 function showFound(m, photo){
@@ -914,7 +927,7 @@ function showFound(m, photo){
         <div class="b2"><button type="button" id="fRetry">Retake</button><button type="button" class="p" id="fGo">${RL.length ? 'Use selected order' : 'Find'}</button></div>`;
       let sel = 0;
       $('fRel').querySelectorAll('.rel').forEach(b => b.onclick = () => { sel = +b.dataset.ri; $('fRel').querySelectorAll('.rel').forEach(x => x.classList.toggle('on', x === b)); });
-      $('fRetry').onclick = () => setScanTab(scanMode);
+      $('fRetry').onclick = () => scanMode === 'live' ? resumeCam() : setScanTab(scanMode);
       $('fTyped').oninput = () => { const v = $('fTyped').value.trim(); if (v.length < 3) return; const mm = matchText(v); if (mm) { showFound(mm, photo); return; } RL = search(v).slice(0, 6).map(o => ({ o, name: true, city: v.toLowerCase().split(/\s+/).some(w => (o.city || '').toLowerCase().includes(w)), pin: 0 })); $('fRel').innerHTML = relHtml(RL); $('fGo').textContent = RL.length ? 'Use selected order' : 'Find'; sel = 0; $('fRel').querySelectorAll('.rel').forEach(b => b.onclick = () => { sel = +b.dataset.ri; $('fRel').querySelectorAll('.rel').forEach(x => x.classList.toggle('on', x === b)); }); };
       $('fGo').onclick = () => {
         const o = RL[sel] && RL[sel].o;
