@@ -802,7 +802,7 @@ function refreshSave(){
   const b = $('saveBtn');
   const vc = SEL && vehChanged();
   b.disabled = !SEL || (!ST && !POD && !vc);
-  b.innerHTML = !ST && !POD && vc ? '&#10004; Save vehicle details' : !ST && POD ? '&#10004; Save POD' : ST === 'delivered' && POD ? '&#10004; Save · Delivered + POD' : ST === 'another' ? '&#10004; Save · Shipped by ' + esc($('aCou').value || 'another') : ST ? '&#10004; Save · ' + ST_TXT[ST] : '&#10004; Save update';
+  b.innerHTML = !ST && !POD && vc ? '&#10004; Save vehicle details' : !ST && POD ? (SEL && !isDel(SEL) ? '&#10004; Save · Delivered + POD' : '&#10004; Save POD') : ST === 'delivered' && POD ? '&#10004; Save · Delivered + POD' : ST === 'another' ? '&#10004; Save · Shipped by ' + esc($('aCou').value || 'another') : ST ? '&#10004; Save · ' + ST_TXT[ST] : '&#10004; Save update';
 }
 /* ---------- who is updating (company + name, saved on this phone) ---------- */
 const WHO_COS = ['BoxUp team', 'Shree Anjani', 'Shree Maruthi', 'The Professional Couriers', 'Mark Express', 'Delhivery', 'Blue Dart', 'DTDC', 'Porter', 'Other'];
@@ -928,6 +928,9 @@ async function saveOne(o, st, pod, extra){
   VER = '';                                 // next refresh downloads the new list
   return d;
 }
+/* a POD photo with no status picked = the order is delivered (escalations stay manual) */
+function isDel(o){ return /deliver/i.test(o.ps || '') || /^delivered$/i.test(String(o.os || '').trim()); }
+function autoSt(o){ return !ST && POD && !isDel(o) ? 'delivered' : ST; }
 $('saveBtn').addEventListener('click', async () => {
   const o = SEL, vc = vehChanged(); if (!o || (!ST && !POD && !vc)) return;
   const V = vehVals();
@@ -939,14 +942,15 @@ $('saveBtn').addEventListener('click', async () => {
   if ((ST === 'dispatched' || (vc && (V.drv || V.dph || V.por))) && !V.veh) { $('dVehErr').hidden = false; $('vehF').scrollIntoView({ behavior: 'smooth', block: 'center' }); $('dVeh').focus({ preventScroll: true }); toast('Enter the vehicle number'); return; }
   if (V.dph && V.dph.replace(/^91/, '').length !== 10) { $('vDphErr').hidden = false; $('vDph').focus(); toast('Driver phone must be 10 digits'); return; }
   if (V.por && !/^[A-Z0-9]{5}$/.test(V.por)) { $('vPorErr').hidden = false; $('vPor').focus(); toast('Porter order ID: enter the last 5 digits'); return; }
+  const st0 = autoSt(o);
   const b = $('saveBtn'); b.disabled = true; b.innerHTML = '<span class="busy"></span> Saving…';
   try {
     if (ST === 'another') {                   // saved as a dispatch on the new courier + new AWB (old AWB stays in history)
       const from = couName(o), to = $('aCou').value, nAwb = $('aAwb').value.trim().toUpperCase(), n = $('note').value.trim();
       await saveOne(o, 'dispatched', POD, { note: 'Shipped by another logistics: ' + (from && from !== 'No courier' ? from + ' → ' : '') + to + ' · AWB ' + nAwb + (n ? ' · ' + n : ''), trk: nAwb, cou: to, vehOn: true, veh: 'Shipped by ' + to, drv: '', dph: '', por: '' });   // the sheet asks for a vehicle no. on every dispatch: record the new courier there
     } else
-    await saveOne(o, ST, POD, { recv: $('recv').value.trim(), note: $('note').value.trim(), trk: $('dTrk').value.trim(), cou: $('dCou').value, vehOn: vc || ST === 'dispatched', veh: V.veh, drv: V.drv, dph: V.dph, por: V.por });
-    toast('&#10004; Saved · ' + (saAwbs(o)[0] || o.id) + (ST === 'another' ? ' · Shipped by ' + esc($('aCou').value) : ST ? ' · ' + ST_TXT[ST] : '') + (POD ? ' · POD uploaded' : '') + (vc ? ' · vehicle details' : ''));
+    await saveOne(o, st0, POD, { recv: $('recv').value.trim(), note: $('note').value.trim(), trk: $('dTrk').value.trim(), cou: $('dCou').value, vehOn: vc || ST === 'dispatched', veh: V.veh, drv: V.drv, dph: V.dph, por: V.por });
+    toast('&#10004; Saved · ' + (saAwbs(o)[0] || o.id) + (ST === 'another' ? ' · Shipped by ' + esc($('aCou').value) : st0 ? ' · ' + ST_TXT[st0] : '') + (POD ? ' · POD uploaded' : '') + (vc ? ' · vehicle details' : ''));
     ST = ''; clearPod(); $('recv').value = ''; $('note').value = ''; $('dTrk').value = ''; fillVeh(o); setSt('');
     renderAll();
     if (!wide()) setTimeout(closeDetail, 600);
@@ -1259,7 +1263,7 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js', { up
    When one is found, a full-screen popup blocks the page until "Download & restart" is tapped.
    It waits until nobody is typing / has an unsaved status, POD or vehicle details, so nothing half-entered is lost.
    >>> Change APP_VER on every upload: that is what tells all devices to update. <<< */
-const APP_VER = '2026-11-25 00:08';
+const APP_VER = '2026-11-25 00:35';
 let NEW_VER = '';
 const verTxt = v => { const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? +m[3] + '-' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m[2] - 1] + (String(v).slice(10).trim() ? ' ' + String(v).slice(10).trim() : '') : v; };
 async function checkUpdate(){
