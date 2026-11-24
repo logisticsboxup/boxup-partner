@@ -161,6 +161,11 @@ a{color:var(--g2)}
 .podbtns input{display:none}
 .podprev{display:flex;gap:12px;align-items:center;margin-top:10px}
 .podprev img{width:72px;height:92px;object-fit:cover;border-radius:8px;border:1px solid var(--ln);background:#fff;flex:none}
+.podprev.big img{width:130px;height:auto;max-height:190px;object-fit:contain;cursor:zoom-in}
+.lens{margin-top:8px;border:2px solid #e0201b;border-radius:9px;padding:8px 10px;font-size:13px;background:#fff}
+.lens .lr{display:flex;justify-content:space-between;gap:8px;align-items:center;margin:3px 0}
+.lens .lk{color:#8a8573;font-size:11.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+.lens input{border:1px solid var(--ln);border-radius:7px;padding:5px 7px;font:inherit;font-size:14px;font-weight:700}
 .podprev .x{border:0;background:transparent;color:var(--rd);font-weight:700;padding:4px 0}
 .ok{color:var(--gr);font-weight:700;font-size:13px}
 .warn{color:var(--am);font-weight:700;font-size:13px}
@@ -841,7 +846,10 @@ async function podFromFile(file){
     const cv = pages[0];
     const blob = await canvasBlob(cv);
     const read = await readPaper(cv);
-    setPod({ blob, url: URL.createObjectURL(blob), mime:'image/jpeg', name: file.name, read });
+    let lens = null;
+    try { prev.innerHTML = '<span class="busy"></span> Finding the order ID and delivery date…'; lens = await lensRead(cv, SEL); } catch (e) {}
+    const up = lens && lens.n ? await canvasBlob(lens.canvas) : blob;   // the saved POD keeps the red boxes
+    setPod({ blob: up, url: URL.createObjectURL(up), mime:'image/jpeg', name: file.name, read, lens });
   } catch (e) { prev.innerHTML = '<span class="bad">Could not open this file: ' + esc(e.message) + '</span>'; }
 }
 function setPod(p){
@@ -851,8 +859,14 @@ function setPod(p){
   if (p.read && p.read.o === SEL) msg = `<div class="ok">&#10003; ${p.read.by === 'id' ? 'Order ' + esc(p.read.key) : 'AWB ' + esc(p.read.key)} read from the paper${p.read.by === 'old' ? ' (old Shree Anjani AWB)' : ''}</div>`;
   else if (p.read && p.read.o) msg = `<div class="warn">&#9888; This paper shows ${esc(p.read.key)}, which is order ${esc(p.read.o.id)} (${esc(p.read.o.name || '')}). <button type="button" class="x" id="podSwitch" style="color:var(--g2)">Open that order</button></div>`;
   else msg = `<div class="warn">Could not read the AWB on the photo. Check it is the right paper.</div>`;
-  prev.innerHTML = `<img src="${p.url}" alt="POD"><div><div style="font-weight:700;font-size:13.5px">${esc(p.name || 'POD photo')}</div>${msg}<button type="button" class="x" id="podDel">Remove</button></div>`;
+  const L = p.lens;
+  const lensBox = L ? `<div class="lens"><div class="lr"><span class="lk">Order ID on photo</span>${L.idTxt ? '<b>' + esc(L.idTxt) + '</b> <span style="color:#1d7a3a">&#10004; matches</span>' : '<span style="color:#9E2B25">not found</span>'}</div>
+    <div class="lr"><span class="lk">Delivery date</span><input type="date" id="podDate" value="${L.date || ''}" max="${isoDay(new Date())}"></div>
+    ${L.date ? '' : '<div style="color:#9E2B25;font-size:12px">Date not readable on the photo: type it in</div>'}</div>` : '';
+  prev.classList.toggle('big', !!L);
+  prev.innerHTML = `<img src="${p.url}" alt="POD" id="podImg"><div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13.5px">${esc(p.name || 'POD photo')}</div>${msg}${lensBox}<button type="button" class="x" id="podDel">Remove</button></div>`;
   $('podDel').onclick = clearPod;
+  $('podImg').onclick = () => window.open(p.url, '_blank');
   if ($('podSwitch')) $('podSwitch').onclick = () => { const o = p.read.o; const keep = POD; POD = null; openOrder(o, { st: ST, pod: keep }); };
   refreshSave();
 }
@@ -928,6 +942,7 @@ async function saveOne(o, st, pod, extra){
   VER = '';                                 // next refresh downloads the new list
   return d;
 }
+function dmy(v){ const d = new Date(v + 'T00:00'); return String(d.getDate()).padStart(2, '0') + '-' + 'JanFebMarAprMayJunJulAugSepOctNovDec'.substr(d.getMonth() * 3, 3) + '-' + d.getFullYear(); }
 /* a POD photo with no status picked = the order is delivered (escalations stay manual) */
 function isDel(o){ return /deliver/i.test(o.ps || '') || /^delivered$/i.test(String(o.os || '').trim()); }
 function autoSt(o){ return !ST && POD && !isDel(o) ? 'delivered' : ST; }
@@ -942,14 +957,19 @@ $('saveBtn').addEventListener('click', async () => {
   if ((ST === 'dispatched' || (vc && (V.drv || V.dph || V.por))) && !V.veh) { $('dVehErr').hidden = false; $('vehF').scrollIntoView({ behavior: 'smooth', block: 'center' }); $('dVeh').focus({ preventScroll: true }); toast('Enter the vehicle number'); return; }
   if (V.dph && V.dph.replace(/^91/, '').length !== 10) { $('vDphErr').hidden = false; $('vDph').focus(); toast('Driver phone must be 10 digits'); return; }
   if (V.por && !/^[A-Z0-9]{5}$/.test(V.por)) { $('vPorErr').hidden = false; $('vPor').focus(); toast('Porter order ID: enter the last 5 digits'); return; }
-  const st0 = autoSt(o);
+  const st0 = autoSt(o), podDv = POD && $('podDate') ? $('podDate').value : '';
   const b = $('saveBtn'); b.disabled = true; b.innerHTML = '<span class="busy"></span> Saving…';
   try {
     if (ST === 'another') {                   // saved as a dispatch on the new courier + new AWB (old AWB stays in history)
       const from = couName(o), to = $('aCou').value, nAwb = $('aAwb').value.trim().toUpperCase(), n = $('note').value.trim();
       await saveOne(o, 'dispatched', POD, { note: 'Shipped by another logistics: ' + (from && from !== 'No courier' ? from + ' → ' : '') + to + ' · AWB ' + nAwb + (n ? ' · ' + n : ''), trk: nAwb, cou: to, vehOn: true, veh: 'Shipped by ' + to, drv: '', dph: '', por: '' });   // the sheet asks for a vehicle no. on every dispatch: record the new courier there
     } else
-    await saveOne(o, st0, POD, { recv: $('recv').value.trim(), note: $('note').value.trim(), trk: $('dTrk').value.trim(), cou: $('dCou').value, vehOn: vc || ST === 'dispatched', veh: V.veh, drv: V.drv, dph: V.dph, por: V.por });
+    await saveOne(o, st0, POD, { recv: $('recv').value.trim(), note: [podDv && st0 === 'delivered' ? 'Delivered on ' + dmy(podDv) + ' (read from POD)' : '', $('note').value.trim()].filter(Boolean).join(' · '), trk: $('dTrk').value.trim(), cou: $('dCou').value, vehOn: vc || ST === 'dispatched', veh: V.veh, drv: V.drv, dph: V.dph, por: V.por });
+    if (podDv && st0 === 'delivered') {        // the delivery date from the POD goes to the Label Log "Delivered Date"
+      const q = { action:'orderset', pin:'', id:o.id, status:'Delivered', problem:'', deliv: podDv, t: Date.now() };
+      if (o.cou) q.courier = o.cou; if (o.awb) q.awb = o.awb;
+      fetch(API + '?' + new URLSearchParams(q)).catch(() => {});
+    }
     toast('&#10004; Saved · ' + (saAwbs(o)[0] || o.id) + (ST === 'another' ? ' · Shipped by ' + esc($('aCou').value) : st0 ? ' · ' + ST_TXT[st0] : '') + (POD ? ' · POD uploaded' : '') + (vc ? ' · vehicle details' : ''));
     ST = ''; clearPod(); $('recv').value = ''; $('note').value = ''; $('dTrk').value = ''; fillVeh(o); setSt('');
     renderAll();
@@ -1031,6 +1051,54 @@ async function ocrText(cv){
   const small = toCanvas(cv, cv.width, cv.height, 1800);
   const r = await w.recognize(small);
   return (r && r.data && r.data.text) || '';
+}
+/* Google-Lens style: find the order ID / AWB and the delivery date on the photo and draw red boxes on them */
+function isoDay(d){ return new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); }
+const MON = { jan:1, feb:2, mar:3, apr:4, may:5, jun:6, jul:7, aug:8, sep:9, oct:10, nov:11, dec:12 };
+function mkDate(d, m, y){
+  const now = new Date(); y = y ? +y : now.getFullYear(); if (y < 100) y += 2000;
+  if (!(d >= 1 && d <= 31 && m >= 1 && m <= 12)) return null;
+  let dt = new Date(y, m - 1, d); if (dt.getMonth() !== m - 1) return null;
+  if (dt > now) { if (!arguments[3]) return null; dt = new Date(y - 1, m - 1, d); }
+  if (now - dt > 120 * 864e5) return null;
+  return dt;
+}
+function findDates(t){
+  const out = [], M = 'jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec';
+  let r = /(\d{1,2})\s*[\/\-.]\s*(\d{1,2})\s*[\/\-.]\s*(\d{2,4})/g, x;
+  while ((x = r.exec(t))) { const d = mkDate(+x[1], +x[2], x[3]); if (d) out.push({ d, s: x[0], i: x.index }); }
+  r = new RegExp('(\\d{1,2})(?:st|nd|rd|th)?[\\s\\-.,]*(' + M + ')[a-z]*\\.?[\\s\\-.,]*(\\d{4}|\\d{2}(?!\\d))?', 'gi');
+  while ((x = r.exec(t))) { const d = mkDate(+x[1], MON[x[2].toLowerCase()], x[3], !x[3]); if (d) out.push({ d, s: x[0], i: x.index }); }
+  r = new RegExp('(' + M + ')[a-z]*\\.?\\s+(\\d{1,2})(?!\\d)(?:st|nd|rd|th)?(?:[\\s,]+(\\d{4}))?', 'gi');
+  while ((x = r.exec(t))) { const d = mkDate(+x[2], MON[x[1].toLowerCase()], x[3], !x[3]); if (d) out.push({ d, s: x[0], i: x.index }); }
+  return out;
+}
+const nrm = v => String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+async function lensRead(cv, o){
+  if (!o) return null;
+  await loadScript(LIB.ocr);
+  if (!OCR) OCR = Tesseract.createWorker('eng');
+  const w = await OCR;
+  const small = toCanvas(cv, cv.width, cv.height, 1800), k = cv.width / small.width;
+  const r = await w.recognize(small);
+  const lines = (r && r.data && r.data.lines) || [];
+  const keys = [o.id].concat(saAwbs(o), o.old ? [o.old] : []).map(nrm).filter(v => v.length >= 5);
+  const boxes = []; let idTxt = '', best = null;
+  const wordsIn = (ln, s) => { const ns = nrm(s); return (ln.words || []).filter(wd => { const t = nrm(wd.text); return t && (ns.includes(t) || t.includes(ns)); }); };
+  const bb = ws => ws.reduce((a, wd) => ({ x0: Math.min(a.x0, wd.bbox.x0), y0: Math.min(a.y0, wd.bbox.y0), x1: Math.max(a.x1, wd.bbox.x1), y1: Math.max(a.y1, wd.bbox.y1) }), { x0: 1e9, y0: 1e9, x1: 0, y1: 0 });
+  for (const ln of lines) {
+    for (const wd of ln.words || []) { const t = nrm(wd.text); if (t.length >= 5 && keys.some(kk => t.includes(kk) || (kk.includes(t) && t.length >= kk.length - 2))) { boxes.push(wd.bbox); if (!idTxt) idTxt = wd.text.replace(/[^A-Za-z0-9\-]/g, ''); } }
+    for (const f of findDates(ln.text || '')) {
+      const score = (/deliver|dlv|recei|recd|rcvd|date|on\b/i.test(ln.text) ? 2 : 0) + f.d.getTime() / 1e13;
+      if (!best || score > best.score) best = { score, d: f.d, ws: wordsIn(ln, f.s) };
+    }
+  }
+  if (best && best.ws.length) boxes.push(bb(best.ws));
+  const c = document.createElement('canvas'); c.width = cv.width; c.height = cv.height;
+  const x = c.getContext('2d'); x.drawImage(cv, 0, 0);
+  x.strokeStyle = '#e0201b'; x.lineWidth = Math.max(3, cv.width / 220); const pd = x.lineWidth * 2;
+  boxes.forEach(b => x.strokeRect(b.x0 * k - pd, b.y0 * k - pd, (b.x1 - b.x0) * k + pd * 2, (b.y1 - b.y0) * k + pd * 2));
+  return { canvas: c, n: boxes.length, idTxt, date: best ? isoDay(best.d) : '' };
 }
 let LAST_READ = null;
 /* barcode first; if that finds nothing, read the printed text */
@@ -1263,7 +1331,7 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js', { up
    When one is found, a full-screen popup blocks the page until "Download & restart" is tapped.
    It waits until nobody is typing / has an unsaved status, POD or vehicle details, so nothing half-entered is lost.
    >>> Change APP_VER on every upload: that is what tells all devices to update. <<< */
-const APP_VER = '2026-11-25 00:35';
+const APP_VER = '2026-11-25 00:55';
 let NEW_VER = '';
 const verTxt = v => { const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? +m[3] + '-' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m[2] - 1] + (String(v).slice(10).trim() ? ' ' + String(v).slice(10).trim() : '') : v; };
 async function checkUpdate(){
