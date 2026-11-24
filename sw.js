@@ -1,6 +1,6 @@
 /* BoxUp Partner: lets the page install as an app. Always uses the network first
    (updates must reach the Google Sheet); keeps a copy of the page for a cold start offline. */
-const CACHE = 'boxup-partner-v1';
+const CACHE = 'boxup-partner-v2';
 const FILES = ['./', 'index.html', 'logo-white.png', 'icon-192.png', 'favicon.png', 'manifest.json'];
 self.addEventListener('install', e => { self.skipWaiting(); e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).catch(() => {})); });
 self.addEventListener('activate', e => e.waitUntil(caches.keys().then(k => Promise.all(k.filter(x => x !== CACHE).map(x => caches.delete(x)))).then(() => self.clients.claim())));
