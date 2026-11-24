@@ -121,6 +121,17 @@ a{color:var(--g2)}
 .dispbox .t{font-weight:800;font-size:13.5px;color:#085041}
 .dispbox .h{font-size:12px;color:#0f6e56;margin-top:5px}
 .vehbox{scroll-margin-bottom:110px;background:#eef4fd;border:1.5px solid #85b7eb;border-radius:14px;padding:10px 12px 12px;margin-top:12px}
+.ptl{margin-top:12px;border-top:1px dashed #d3d1c7;padding-top:10px}
+.ptl .h{display:flex;align-items:center;gap:6px;font-weight:800;font-size:13.5px;color:#2c2c2a}
+.ptl .pk{margin-left:auto;font-size:11.5px;font-weight:700;background:#e1f5ee;color:#085041;border-radius:8px;padding:2px 8px}
+.ptl ol{list-style:none;margin:8px 0 0;padding:0 0 0 4px}
+.ptl li{position:relative;padding:0 0 10px 18px;border-left:2px solid #c9e8dc;margin-left:5px}
+.ptl li:last-child{border-left-color:transparent;padding-bottom:0}
+.ptl li:before{content:'';position:absolute;left:-7px;top:2px;width:12px;height:12px;border-radius:50%;background:#1d9e75;border:2px solid #fff;box-shadow:0 0 0 1.5px #1d9e75}
+.ptl li.bad:before{background:#a32d2d;box-shadow:0 0 0 1.5px #a32d2d}
+.ptl li b{display:block;font-size:13.5px;color:#1e3a2e}
+.ptl li span{font-size:12px;color:#5f5e5a}
+.ptl .lk{font-size:11px;color:#888780;margin-top:6px}
 .vehbox .t{font-weight:800;font-size:14.5px;color:#0c447c}
 .vehbox .fld{margin-top:8px}
 .vehbox .r2{display:flex;gap:8px}.vehbox .r2 .fld{flex:1;min-width:0}
@@ -675,6 +686,13 @@ function fillVeh(o){
 }
 function vehChanged(){ return JSON.stringify(vehVals()) !== VEH0; }
 ['dVeh','vDrv','vDph','vPor'].forEach(id => $(id).addEventListener('input', () => { ['dVehErr','vDphErr','vPorErr'].forEach(i => $(i).hidden = true); refreshSave(); }));
+function tlHtml(o){
+  const L = String(o.tl || '').split(' ; ').map(x => x.split(' | ')).filter(x => x[0]);
+  if (!L.length) return `<div class="ptl"><div class="h">&#128337; Timeline</div><div class="lk">No partner update yet. The time is saved when a status is pressed.</div></div>`;
+  return `<div class="ptl"><div class="h">&#128337; Timeline${o.pkt ? `<span class="pk">Picked up ${esc(o.pkt)}</span>` : ''}</div><ol>` +
+    L.slice().reverse().map(x => `<li class="${/fail|rto/i.test(x[0]) ? 'bad' : ''}"><b>${esc(x[0])}</b><span>${esc(x[1] || '')}${x[2] ? ' · by ' + esc(x[2]) : ''}</span></li>`).join('') +
+    `</ol><div class="lk">&#128274; Date and time are saved automatically and cannot be changed.</div></div>`;
+}
 function renderDetail(scroll){
   const o = SEL; if (!o) return;
   const det = $('det');
@@ -695,7 +713,8 @@ function renderDetail(scroll){
     <div class="mvl" style="color:#555;background:#f1efe8">Courier: <b>${esc(couName(o))}</b></div>
     ${moved(o) ? `<div class="mvl">&#8635; AWB changed: old AWB ${esc(olds(o).join(', '))}, now <b>${esc(couName(o))} ${esc(awbs(o).join(', '))}</b></div>` : ''}
     <div class="tags"><span class="chip">BoxUp: ${esc(sysStatus(o))}</span>${o.ps ? `<span class="chip ${chipCls(group(o))}">Partner: ${esc(o.ps)}</span>` : '<span class="chip">Partner: not updated yet</span>'}</div>
-    <div class="hist">Booked ${esc(o.at || '')}${o.dd ? ' · dispatched ' + esc(o.dd) : ''}</div>`;
+    <div class="hist">Booked ${esc(o.at || '')}${o.dd ? ' · dispatched ' + esc(o.dd) : ''}</div>
+    ${tlHtml(o)}`;
   $('podLinks').innerHTML = String(o.pod || '').split(/\s*,\s*/).filter(Boolean).map((u, i) => `<a href="${esc(u)}" target="_blank" rel="noopener">&#128196; POD ${i + 1} uploaded</a>`).join('');
   $('dHist').textContent = o.pup ? 'Last partner update: ' + o.pup + (o.ps ? ' · ' + o.ps : '') + (o.recv ? ' · received by ' + o.recv : '') + (o.pnote ? ' · ' + o.pnote : '') + (o.by ? ' · by ' + o.by : '') : '';
   document.querySelectorAll('#sbt button').forEach(b => b.classList.toggle('on', b.dataset.st === ST));
@@ -827,6 +846,7 @@ async function saveOne(o, st, pod, extra){
   if (!d || !d.ok) throw new Error((d && d.error) || 'Not saved');
   Object.assign(o, { ps: d.ps, pup: d.pup, pod: d.pod });
   if (st) Object.assign(o, { recv: d.recv, pnote: d.pnote, by: d.by });
+  if (d.tl !== undefined) Object.assign(o, { tl: d.tl, pkt: d.pkt || o.pkt });
   if (st === 'dispatched') { if (d.awb) o.awb = d.awb; if (d.cou) o.cou = d.cou; o.ds = 'Dispatched'; }
   if (d.veh !== undefined) Object.assign(o, { veh: d.veh || '', drv: d.drv || '', dph: d.dph || '', por: d.por || '' });
   MINE.add(o.id); store.set(MINE_KEY, [...MINE].slice(-500));
