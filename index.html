@@ -115,6 +115,16 @@ a{color:var(--g2)}
 .sbt button{border:1.5px solid var(--ln);background:#fff;border-radius:12px;padding:12px 6px;font-weight:700;font-size:14px}
 .sbt button.on{background:var(--g);border-color:var(--g);color:#fff}
 .sbt button.on.bad{background:var(--rd);border-color:var(--rd)}
+.sbt button.hl{background:#fff4dc;border-color:#e0a43a;color:#8a5a00;font-weight:800}
+.sbt button.hl.on{background:#e0a43a;border-color:#e0a43a;color:#fff}
+.vehbox[hidden],.anobox[hidden]{display:none}
+.anobox{background:#fff8ea;border:1.5px solid #e0a43a;border-radius:14px;padding:10px 12px 12px;margin-top:12px}
+.anobox .t{font-weight:800;font-size:14.5px;color:#8a5a00}
+.anobox .fld{margin-top:8px}
+.anobox select{width:100%}
+.anobox .chg{margin-top:8px;font-size:12.5px;background:#fff1cf;color:#8a5a00;border-radius:8px;padding:5px 9px;font-weight:700}
+.anobox .h{font-size:12px;color:#8a5a00;margin-top:6px}
+.vline{margin-top:8px;font-size:12.5px;background:#eef4fd;color:#0c447c;border-radius:8px;padding:6px 9px}
 .fld{display:block;margin-top:12px}
 .dispbox{scroll-margin-bottom:110px;background:#e1f5ee;border:1.5px solid #5dcaa5;border-radius:14px;padding:10px 12px 12px;margin-top:12px}
 .dispbox .fld{margin-top:8px}
@@ -337,17 +347,6 @@ a{color:var(--g2)}
     <div class="two">
       <div>
         <div class="card" id="dCard"></div>
-        <div class="vehbox" id="vehF">
-          <div class="t">&#128667; Vehicle details</div>
-          <div class="cur" id="vCur" hidden></div>
-          <label class="fld"><span>Vehicle no. <b style="color:var(--rd)">*</b></span><input id="dVeh" placeholder="KA 05 AB 1234" autocomplete="off" autocapitalize="characters"><small class="err" id="dVehErr" hidden>Enter the vehicle number</small></label>
-          <div class="r2">
-            <label class="fld"><span>Driver name</span><input id="vDrv" placeholder="Name" autocomplete="off"></label>
-            <label class="fld"><span>Driver phone</span><input id="vDph" placeholder="10 digits" inputmode="numeric" maxlength="14" autocomplete="off"><small class="err" id="vDphErr" hidden>Enter 10 digits</small></label>
-          </div>
-          <label class="fld"><span>Porter order ID (last 5 digits)</span><input id="vPor" placeholder="e.g. 48213" maxlength="5" autocomplete="off" autocapitalize="characters"><small class="err" id="vPorErr" hidden>Enter the last 5 digits</small></label>
-          <div class="h">From the Porter app / driver. Saved in BoxUp with this order.</div>
-        </div>
       </div>
       <div>
         <div class="sec">Update status</div>
@@ -359,6 +358,25 @@ a{color:var(--g2)}
           <button type="button" data-st="delivered">&#9989; Delivered</button>
           <button type="button" data-st="failed" class="b">&#9888; Attempt failed</button>
           <button type="button" data-st="rto" class="b">&#8617; RTO</button>
+          <button type="button" data-st="another" class="hl">&#128257; Shipped by another</button>
+        </div>
+        <div class="vehbox" id="vehF" hidden>
+          <div class="t">&#128667; Vehicle details (Porter)</div>
+          <div class="cur" id="vCur" hidden></div>
+          <label class="fld"><span>Vehicle no. <b style="color:var(--rd)">*</b></span><input id="dVeh" placeholder="KA 05 AB 1234" autocomplete="off" autocapitalize="characters"><small class="err" id="dVehErr" hidden>Enter the vehicle number</small></label>
+          <div class="r2">
+            <label class="fld"><span>Driver name</span><input id="vDrv" placeholder="Name" autocomplete="off"></label>
+            <label class="fld"><span>Driver phone</span><input id="vDph" placeholder="10 digits" inputmode="numeric" maxlength="14" autocomplete="off"><small class="err" id="vDphErr" hidden>Enter 10 digits</small></label>
+          </div>
+          <label class="fld"><span>Porter order ID (last 5 digits)</span><input id="vPor" placeholder="e.g. 48213" maxlength="5" autocomplete="off" autocapitalize="characters"><small class="err" id="vPorErr" hidden>Enter the last 5 digits</small></label>
+          <div class="h">From the Porter app / driver. Saved in BoxUp with this order.</div>
+        </div>
+        <div class="anobox" id="anoF" hidden>
+          <div class="t">&#128257; Shipped by another logistics</div>
+          <label class="fld"><span>New logistics <b style="color:var(--rd)">*</b></span><select id="aCou"></select><small class="err" id="aCouErr" hidden>Choose the new logistics</small></label>
+          <div class="chg" id="aChg" hidden></div>
+          <label class="fld"><span>New AWB no. <b style="color:var(--rd)">*</b></span><input id="aAwb" placeholder="AWB / LR number" autocomplete="off" autocapitalize="characters"><small class="err" id="aAwbErr" hidden>Enter the new AWB number</small></label>
+          <div class="h" id="aOld"></div>
         </div>
         <div class="dispbox" id="dispF" hidden>
           <div class="t">Dispatch details</div>
@@ -468,7 +486,7 @@ async function api(body, ms){
 
 /* ---------- status logic (partner status is separate from BoxUp's own tracking) ---------- */
 const PS = { 'Dispatched':'dispatched', 'Picked up':'picked', 'In transit':'transit', 'Out for delivery':'ofd', 'Delivered':'delivered', 'Attempt failed':'failed', 'RTO':'rto' };
-const ST_TXT = { dispatched:'Dispatched', picked:'Picked up', transit:'In transit', ofd:'Out for delivery', delivered:'Delivered', failed:'Attempt failed', rto:'RTO' };
+const ST_TXT = { dispatched:'Dispatched', picked:'Picked up', transit:'In transit', ofd:'Out for delivery', delivered:'Delivered', failed:'Attempt failed', rto:'RTO', another:'Shipped by another' };
 function awbs(o){ return String(o.awb || '').split(/[,\s]+/).filter(Boolean); }
 function olds(o){ return String(o.old || '').split(/[,\s]+/).filter(Boolean); }
 const moved = o => !!(olds(o).length && awbs(o).length);   // AWB changed (old AWBs still scan)
@@ -745,6 +763,7 @@ function renderDetail(scroll){
     <div class="mvl" style="color:#555;background:#f1efe8">Courier: <b>${esc(couName(o))}</b></div>
     ${moved(o) ? `<div class="mvl">&#8635; AWB changed: old AWB ${esc(olds(o).join(', '))}, now <b>${esc(couName(o))} ${esc(awbs(o).join(', '))}</b></div>` : ''}
     <div class="tags"><span class="chip">BoxUp: ${esc(sysStatus(o))}</span>${o.ps ? `<span class="chip ${chipCls(group(o))}">Partner: ${esc(o.ps)}</span>` : '<span class="chip">Partner: not updated yet</span>'}</div>
+    ${(o.veh || o.por) ? `<div class="vline">&#128667; Vehicle: ${esc([o.veh, o.drv, o.dph, o.por ? 'Porter ID ' + o.por : ''].filter(Boolean).join(' · '))}</div>` : ''}
     <div class="hist">Booked ${esc(o.at || '')}${o.dd ? ' · dispatched ' + esc(o.dd) : ''}</div>
     ${tlHtml(o)}`;
   $('podLinks').innerHTML = String(o.pod || '').split(/\s*,\s*/).filter(Boolean).map((u, i) => `<a href="${esc(u)}" target="_blank" rel="noopener">&#128196; POD ${i + 1} uploaded</a>`).join('');
@@ -763,10 +782,14 @@ function setSt(st){
   ST = ST === st ? '' : st;
   document.querySelectorAll('#sbt button').forEach(b => { b.classList.toggle('on', b.dataset.st === ST); b.classList.toggle('bad', b.dataset.st === ST && (ST === 'failed' || ST === 'rto')); });
   $('recvF').hidden = ST !== 'delivered';
-  $('dispF').hidden = ST !== 'dispatched';
-  if (ST === 'dispatched' && SEL) fillDisp(SEL);
-  const box = ST === 'dispatched' ? (!$('dVeh').value.trim() ? $('vehF') : $('dispF')) : ST === 'delivered' ? $('recvF') : null;   // on a phone the box opens below the screen: bring it into view
-  if (box) setTimeout(() => { try { box.scrollIntoView({ behavior: 'smooth', block: 'center' }); if (ST === 'dispatched' && !$('dVeh').value) $('dVeh').focus({ preventScroll: true }); } catch (e) {} }, 60);
+  $('dispF').hidden = true;                       // AWB/courier change now lives under "Shipped by another"
+  if (ST === 'dispatched' && SEL) fillDisp(SEL);  // keeps the current AWB + courier for the save
+  $('vehF').hidden = ST !== 'dispatched';         // vehicle details only for Dispatched (Porter)
+  if (ST !== 'dispatched' && SEL) fillVeh(SEL);   // drop half-typed vehicle details when leaving Dispatched
+  $('anoF').hidden = ST !== 'another';
+  if (ST === 'another' && SEL) fillAno(SEL);
+  const box = ST === 'dispatched' ? $('vehF') : ST === 'another' ? $('anoF') : ST === 'delivered' ? $('recvF') : null;   // on a phone the box opens below the screen: bring it into view
+  if (box) setTimeout(() => { try { box.scrollIntoView({ behavior: 'smooth', block: 'center' }); if (ST === 'dispatched' && !$('dVeh').value) $('dVeh').focus({ preventScroll: true }); if (ST === 'another' && !$('aCou').value) $('aCou').focus({ preventScroll: true }); } catch (e) {} }, 60);
   $('dVehErr').hidden = true;
   $('noteL').textContent = ST === 'failed' ? 'Reason (why it could not be delivered)' : ST === 'rto' ? 'Reason for RTO' : 'Note (optional)';
   refreshSave();
@@ -776,7 +799,7 @@ function refreshSave(){
   const b = $('saveBtn');
   const vc = SEL && vehChanged();
   b.disabled = !SEL || (!ST && !POD && !vc);
-  b.innerHTML = !ST && !POD && vc ? '&#10004; Save vehicle details' : !ST && POD ? '&#10004; Save POD' : ST === 'delivered' && POD ? '&#10004; Save · Delivered + POD' : ST ? '&#10004; Save · ' + ST_TXT[ST] : '&#10004; Save update';
+  b.innerHTML = !ST && !POD && vc ? '&#10004; Save vehicle details' : !ST && POD ? '&#10004; Save POD' : ST === 'delivered' && POD ? '&#10004; Save · Delivered + POD' : ST === 'another' ? '&#10004; Save · Shipped by ' + esc($('aCou').value || 'another') : ST ? '&#10004; Save · ' + ST_TXT[ST] : '&#10004; Save update';
 }
 /* ---------- who is updating (company + name, saved on this phone) ---------- */
 const WHO_COS = ['BoxUp team', 'Shree Anjani', 'Shree Maruthi', 'Mark Express', 'Delhivery', 'Blue Dart', 'DTDC', 'Porter', 'Other'];
@@ -842,6 +865,20 @@ function fillDisp(o){
   $('dCou').innerHTML = list.map(c => `<option${c === cur ? ' selected' : ''}>${esc(c)}</option>`).join('');
   if (!$('dTrk').value) $('dTrk').value = saAwbs(o)[0] || awbs(o)[0] || '';
 }
+function fillAno(o){
+  const cur = couName(o);
+  const list = COU_LIST.concat(['Bus / transport', 'Other']);
+  $('aCou').innerHTML = '<option value="">Select logistics</option>' + list.map(c => c === cur ? `<option value="" disabled>${esc(c)} (current)</option>` : `<option>${esc(c)}</option>`).join('');
+  $('aAwb').value = ''; $('aChg').hidden = true; ['aCouErr','aAwbErr'].forEach(i => $(i).hidden = true);
+  const a = saAwbs(o)[0] || '';
+  $('aOld').textContent = a ? 'Old AWB ' + a + (cur && cur !== 'No courier' ? ' (' + cur + ')' : '') + ' is kept in history.' : '';
+}
+$('aCou').addEventListener('change', () => {
+  const n = $('aCou').value, cur = SEL ? couName(SEL) : '';
+  $('aChg').hidden = !n; $('aChg').innerHTML = n ? '&#8635; ' + esc(cur && cur !== 'No courier' ? cur : 'Current') + ' &rarr; ' + esc(n) : '';
+  $('aCouErr').hidden = true; refreshSave();
+});
+$('aAwb').addEventListener('input', () => { $('aAwbErr').hidden = true; });
 /* ---------- change Order ID ---------- */
 function closeRen(){ const b = $('renBox'); if (b) b.innerHTML = ''; }
 function openRen(){
@@ -889,13 +926,21 @@ $('saveBtn').addEventListener('click', async () => {
   const o = SEL, vc = vehChanged(); if (!o || (!ST && !POD && !vc)) return;
   const V = vehVals();
   if (ST === 'failed' && !$('note').value.trim()) { $('note').focus(); toast('Add the reason for the failed attempt'); return; }
+  if (ST === 'another') {
+    if (!$('aCou').value) { $('aCouErr').hidden = false; $('aCou').focus(); toast('Choose the new logistics'); return; }
+    if (!$('aAwb').value.trim()) { $('aAwbErr').hidden = false; $('aAwb').focus(); toast('Enter the new AWB number'); return; }
+  }
   if ((ST === 'dispatched' || (vc && (V.drv || V.dph || V.por))) && !V.veh) { $('dVehErr').hidden = false; $('vehF').scrollIntoView({ behavior: 'smooth', block: 'center' }); $('dVeh').focus({ preventScroll: true }); toast('Enter the vehicle number'); return; }
   if (V.dph && V.dph.replace(/^91/, '').length !== 10) { $('vDphErr').hidden = false; $('vDph').focus(); toast('Driver phone must be 10 digits'); return; }
   if (V.por && !/^[A-Z0-9]{5}$/.test(V.por)) { $('vPorErr').hidden = false; $('vPor').focus(); toast('Porter order ID: enter the last 5 digits'); return; }
   const b = $('saveBtn'); b.disabled = true; b.innerHTML = '<span class="busy"></span> Saving…';
   try {
+    if (ST === 'another') {                   // saved as a dispatch on the new courier + new AWB (old AWB stays in history)
+      const from = couName(o), to = $('aCou').value, nAwb = $('aAwb').value.trim().toUpperCase(), n = $('note').value.trim();
+      await saveOne(o, 'dispatched', POD, { note: 'Shipped by another logistics: ' + (from && from !== 'No courier' ? from + ' → ' : '') + to + ' · AWB ' + nAwb + (n ? ' · ' + n : ''), trk: nAwb, cou: to });
+    } else
     await saveOne(o, ST, POD, { recv: $('recv').value.trim(), note: $('note').value.trim(), trk: $('dTrk').value.trim(), cou: $('dCou').value, vehOn: vc || ST === 'dispatched', veh: V.veh, drv: V.drv, dph: V.dph, por: V.por });
-    toast('&#10004; Saved · ' + (saAwbs(o)[0] || o.id) + (ST ? ' · ' + ST_TXT[ST] : '') + (POD ? ' · POD uploaded' : '') + (vc ? ' · vehicle details' : ''));
+    toast('&#10004; Saved · ' + (saAwbs(o)[0] || o.id) + (ST === 'another' ? ' · Shipped by ' + esc($('aCou').value) : ST ? ' · ' + ST_TXT[ST] : '') + (POD ? ' · POD uploaded' : '') + (vc ? ' · vehicle details' : ''));
     ST = ''; clearPod(); $('recv').value = ''; $('note').value = ''; $('dTrk').value = ''; fillVeh(o); setSt('');
     renderAll();
     if (!wide()) setTimeout(closeDetail, 600);
@@ -1208,7 +1253,7 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js', { up
    When one is found, a full-screen popup blocks the page until "Download & restart" is tapped.
    It waits until nobody is typing / has an unsaved status, POD or vehicle details, so nothing half-entered is lost.
    >>> Change APP_VER on every upload: that is what tells all devices to update. <<< */
-const APP_VER = '2026-11-24 22:30';
+const APP_VER = '2026-11-24 22:45';
 let NEW_VER = '';
 const verTxt = v => { const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? +m[3] + '-' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m[2] - 1] + (String(v).slice(10).trim() ? ' ' + String(v).slice(10).trim() : '') : v; };
 async function checkUpdate(){
