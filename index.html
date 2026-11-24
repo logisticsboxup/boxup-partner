@@ -502,11 +502,14 @@ function trackUrl(cou, awb){
   if (/anjani/.test(c) || (!c && /^19\d{8}$/.test(awb))) return 'https://shreeanjani.co.in/tracking/?awb=' + a;
   return '';
 }
-const COU_LIST = ['Shree Anjani', 'Shree Maruthi', 'Mark Express', 'Blue Dart', 'Delhivery', 'DTDC', 'Porter'];
+const COU_LIST = ['Shree Anjani', 'Shree Maruthi', 'The Professional Couriers', 'Mark Express', 'Blue Dart', 'Delhivery', 'DTDC', 'Porter'];
+const OUR_COU = ['Shree Anjani', 'Shree Maruthi', 'The Professional Couriers', 'Mark Express', 'Porter', 'Blue Dart', 'DTDC', 'In-house', 'Delhivery', 'FedEx', 'Jabbar Travellers', 'International'];   // used by BoxUp (from the log history)
+const MORE_COU = ['Aramex', 'DHL', 'Dotzot', 'Ecom Express', 'Ekart', 'Gati', 'India Post (Speed Post)', 'iThink Logistics', 'Safexpress', 'Shadowfax', 'XpressBees'];
 function couName(o){
   const c = String(o.cou || '').toLowerCase();
   if (/anjani/.test(c)) return 'Shree Anjani'; if (/maru/.test(c)) return 'Shree Maruthi'; if (/mark\s*exp/.test(c)) return 'Mark Express';
   if (/blue\s*dart|shiprocket/.test(c)) return 'Blue Dart'; if (/delhivery/.test(c)) return 'Delhivery'; if (/dtdc/.test(c)) return 'DTDC'; if (/porter/.test(c)) return 'Porter';
+  if (/prof/.test(c)) return 'The Professional Couriers'; if (/in.?house/.test(c)) return 'In-house'; if (/jabbar/.test(c)) return 'Jabbar Travellers'; if (/fed\s*ex/.test(c)) return 'FedEx';
   return o.cou ? String(o.cou).trim() : 'No courier';
 }
 function couTag(o){ const n = couName(o), k = { 'Mark Express':'ma', 'Shree Maruthi':'sm', 'Blue Dart':'bd', 'Delhivery':'dl', 'DTDC':'dt', 'Porter':'po', 'No courier':'no' }[n] || ''; return `<span class="cb ${k}">${esc(n)}</span>`; }
@@ -802,7 +805,7 @@ function refreshSave(){
   b.innerHTML = !ST && !POD && vc ? '&#10004; Save vehicle details' : !ST && POD ? '&#10004; Save POD' : ST === 'delivered' && POD ? '&#10004; Save · Delivered + POD' : ST === 'another' ? '&#10004; Save · Shipped by ' + esc($('aCou').value || 'another') : ST ? '&#10004; Save · ' + ST_TXT[ST] : '&#10004; Save update';
 }
 /* ---------- who is updating (company + name, saved on this phone) ---------- */
-const WHO_COS = ['BoxUp team', 'Shree Anjani', 'Shree Maruthi', 'Mark Express', 'Delhivery', 'Blue Dart', 'DTDC', 'Porter', 'Other'];
+const WHO_COS = ['BoxUp team', 'Shree Anjani', 'Shree Maruthi', 'The Professional Couriers', 'Mark Express', 'Delhivery', 'Blue Dart', 'DTDC', 'Porter', 'Other'];
 let WHO = (() => { const w = store.get(WHO_KEY, null); return w && typeof w === 'object' ? w : { co:'', name: typeof w === 'string' ? w : '' }; })();
 const whoTxt = () => WHO.co ? (WHO.name ? WHO.name + ' (' + WHO.co + ')' : WHO.co) : (WHO.name || '');
 function whoPaint(){
@@ -867,8 +870,11 @@ function fillDisp(o){
 }
 function fillAno(o){
   const cur = couName(o);
-  const list = COU_LIST.concat(['Bus / transport', 'Other']);
-  $('aCou').innerHTML = '<option value="">Select logistics</option>' + list.map(c => c === cur ? `<option value="" disabled>${esc(c)} (current)</option>` : `<option>${esc(c)}</option>`).join('');
+  const opt = c => c === cur ? `<option value="" disabled>${esc(c)} (current)</option>` : `<option>${esc(c)}</option>`;
+  $('aCou').innerHTML = '<option value="">Select logistics</option>' +
+    '<optgroup label="Our couriers">' + OUR_COU.map(opt).join('') + '</optgroup>' +
+    '<optgroup label="Other couriers">' + MORE_COU.map(opt).join('') + '</optgroup>' +
+    '<optgroup label="Other">' + ['Bus / transport', 'Other'].map(opt).join('') + '</optgroup>';
   $('aAwb').value = ''; $('aChg').hidden = true; ['aCouErr','aAwbErr'].forEach(i => $(i).hidden = true);
   const a = saAwbs(o)[0] || '';
   $('aOld').textContent = a ? 'Old AWB ' + a + (cur && cur !== 'No courier' ? ' (' + cur + ')' : '') + ' is kept in history.' : '';
@@ -1253,7 +1259,7 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js', { up
    When one is found, a full-screen popup blocks the page until "Download & restart" is tapped.
    It waits until nobody is typing / has an unsaved status, POD or vehicle details, so nothing half-entered is lost.
    >>> Change APP_VER on every upload: that is what tells all devices to update. <<< */
-const APP_VER = '2026-11-24 22:50';
+const APP_VER = '2026-11-24 22:58';
 let NEW_VER = '';
 const verTxt = v => { const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? +m[3] + '-' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m[2] - 1] + (String(v).slice(10).trim() ? ' ' + String(v).slice(10).trim() : '') : v; };
 async function checkUpdate(){
