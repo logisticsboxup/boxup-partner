@@ -261,6 +261,18 @@ a{color:var(--g2)}
   .mod.light .bulk{padding-bottom:40px}
   .mod:not(.light){inset:5vh 20vw;border-radius:18px;overflow:hidden;box-shadow:0 0 0 100vmax rgba(0,0,0,.55)}
 }
+.upd{position:fixed;inset:0;z-index:9999;background:rgba(10,30,20,.62);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:22px}
+.upd[hidden]{display:none}
+.ubox{background:#fff;border-radius:20px;padding:24px 20px 18px;text-align:center;width:100%;max-width:380px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.ubox[hidden]{display:none}
+.uic{width:64px;height:64px;border-radius:50%;background:#e1f5ee;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:32px}
+.ubox h2{font-size:19px;color:#1e3a2e;margin:0}
+.ubox p{font-size:13.5px;color:#555;margin:8px 0 0;line-height:1.45}
+.uver{display:inline-block;margin-top:10px;font-size:11.5px;background:#f1efe8;color:#5f5e5a;border-radius:8px;padding:3px 9px}
+.ubtn{display:block;width:100%;margin-top:16px;background:#1b7a4b;color:#fff;font-weight:800;font-size:15.5px;border:0;border-radius:13px;padding:14px;cursor:pointer}
+.unote{font-size:11px;color:#888;margin-top:10px}
+.ubar{height:8px;background:#e7eee9;border-radius:6px;overflow:hidden;margin-top:16px}.ubar i{display:block;height:100%;width:0;background:#1d9e75;transition:width .25s}
+.uld{font-size:13px;color:#1b7a4b;font-weight:700;margin-top:10px}
 </style>
 </head>
 <body>
@@ -412,6 +424,24 @@ a{color:var(--g2)}
 </div></div>
 <div class="toast" id="toast" hidden></div>
 
+<!-- new version popup (blocks the page until updated) -->
+<div class="upd" id="updMod" hidden>
+  <div class="ubox" id="updA">
+    <div class="uic">&#11015;&#65039;</div>
+    <h2>New version available</h2>
+    <p>BoxUp Partner has been updated. Download the full new version to keep working.</p>
+    <span class="uver" id="updVer"></span>
+    <button type="button" class="ubtn" id="updGo">&#11015; Download &amp; restart</button>
+    <div class="unote">The page can't be used until it is updated.</div>
+  </div>
+  <div class="ubox" id="updB" hidden>
+    <div class="uic">&#128260;</div>
+    <h2>Updating BoxUp Partner</h2>
+    <p>Downloading the full new version&hellip;</p>
+    <div class="ubar"><i id="updBar"></i></div>
+    <div class="uld">The app will restart by itself</div>
+  </div>
+</div>
 <script>
 'use strict';
 const API = 'https://script.google.com/macros/s/AKfycbxkWlpzmubWJwgFQF7cCDAegDHDFpst-j2AnoLVrk3rVnZL9CuOukEIC_GR43gUlL7e/exec';
@@ -697,7 +727,9 @@ function renderDetail(scroll){
   const o = SEL; if (!o) return;
   const det = $('det');
   const a = saAwbs(o);
-  if (wide()) { $('rc').appendChild(det); $('rcEmpty').hidden = true; } else document.body.appendChild(det);
+  const host = wide() ? $('rc') : document.body;   // move the panel only when the layout really changes: moving it drops the focused field and closes the phone keyboard
+  if (det.parentNode !== host) host.appendChild(det);
+  if (wide()) $('rcEmpty').hidden = true;
   det.hidden = false;
   if (!wide()) document.body.style.overflow = 'hidden';
   if (scroll) det.scrollTop = 0;
@@ -1152,7 +1184,8 @@ $('bkSave').addEventListener('click', async () => {
 /* ---------- small things ---------- */
 let toastT = null;
 function toast(html){ const t = $('toast'); t.innerHTML = html; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 3200); }
-window.addEventListener('resize', () => { if (SEL) renderDetail(false); });
+let WIDE0 = wide();   // the phone keyboard opening also fires resize: only redraw when phone/laptop layout switches
+window.addEventListener('resize', () => { const w = wide(); if (w === WIDE0) return; WIDE0 = w; if (SEL) renderDetail(false); });
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { if (!$('scanMod').hidden) closeScan(); else if (!$('bulkMod').hidden) $('bulkX').click(); else if (SEL) closeDetail(); }
   if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') { e.preventDefault(); $('q').focus(); }
@@ -1169,7 +1202,55 @@ window.addEventListener('popstate', () => { if (!$('scanMod').hidden) closeScan(
   load().then(() => { if (p) { const m = matchText(p); if (m) openOrder(m.o); else { $('q').value = p; renderDD(); } } });
 })();
 /* ---------- install as an app (home screen) ---------- */
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(r => { try { r.update(); } catch (e) {} }).catch(() => {});
+/* ---------- new-version popup on every phone / laptop ----------
+   Every minute (and when the app is reopened) the page checks GitHub for a newer index.html.
+   When one is found, a full-screen popup blocks the page until "Download & restart" is tapped.
+   It waits until nobody is typing / has an unsaved status, POD or vehicle details, so nothing half-entered is lost.
+   >>> Change APP_VER on every upload: that is what tells all devices to update. <<< */
+const APP_VER = '2026-11-24 22:30';
+let NEW_VER = '';
+const verTxt = v => { const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? +m[3] + '-' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m[2] - 1] + (String(v).slice(10).trim() ? ' ' + String(v).slice(10).trim() : '') : v; };
+async function checkUpdate(){
+  if (NEW_VER) return tryShowUpd();
+  try {
+    const r = await fetch('index.html?u=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) return;
+    const m = (await r.text()).match(/const APP_VER = '([^']+)'/);
+    if (m && m[1] !== APP_VER) { NEW_VER = m[1]; tryShowUpd(); }
+  } catch (e) {}
+}
+function busyNow(){
+  const a = document.activeElement;
+  if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return true;
+  if (POD || ST || (SEL && vehChanged())) return true;
+  if (!$('scanMod').hidden || !$('bulkMod').hidden) return true;
+  return false;
+}
+function tryShowUpd(){
+  if (!NEW_VER || !$('updMod').hidden || busyNow()) return;
+  $('updVer').textContent = 'Your version: ' + verTxt(APP_VER) + ' · New: ' + verTxt(NEW_VER);
+  $('updMod').hidden = false; document.body.style.overflow = 'hidden';
+  try { document.activeElement.blur(); } catch (e) {}
+}
+async function doUpdate(){
+  $('updA').hidden = true; $('updB').hidden = false;
+  const bar = $('updBar'); let pct = 8; bar.style.width = pct + '%';
+  const tick = setInterval(() => { pct = Math.min(90, pct + 7); bar.style.width = pct + '%'; }, 250);
+  try {
+    if ('caches' in window) { const k = await caches.keys(); await Promise.all(k.map(x => caches.delete(x))); }
+    await Promise.all(['index.html', 'sw.js', 'manifest.json'].map(f => fetch(f + '?u=' + Date.now(), { cache: 'reload' }).catch(() => {})));
+    if ('serviceWorker' in navigator) { const rs = await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map(r => r.update().catch(() => {}))); }
+  } catch (e) {}
+  clearInterval(tick); bar.style.width = '100%';
+  setTimeout(() => { location.replace(location.pathname + '?v=' + encodeURIComponent(NEW_VER || Date.now())); }, 500);
+}
+$('updGo').addEventListener('click', doUpdate);
+document.addEventListener('focusout', () => setTimeout(tryShowUpd, 1200));
+document.addEventListener('click', () => setTimeout(tryShowUpd, 1200));
+setInterval(checkUpdate, 60000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checkUpdate(); });
+setTimeout(checkUpdate, 4000);
 const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 let instEv = null;
 const instHidden = () => { try { return localStorage.getItem('boxup.partner.instx') === '1'; } catch (e) { return false; } };
