@@ -116,6 +116,14 @@ a{color:var(--g2)}
 .sbt button.on{background:var(--g);border-color:var(--g);color:#fff}
 .sbt button.on.bad{background:var(--rd);border-color:var(--rd)}
 .fld{display:block;margin-top:12px}
+.dispbox{background:#e1f5ee;border:1.5px solid #5dcaa5;border-radius:14px;padding:10px 12px 12px;margin-top:12px}
+.dispbox .fld{margin-top:8px}
+.dispbox .t{font-weight:800;font-size:13.5px;color:#085041}
+.dispbox .h{font-size:12px;color:#0f6e56;margin-top:5px}
+.fld .err{display:block;color:var(--rd);font-size:12.5px;margin-top:4px}
+.idchg{border:1.5px solid #85b7eb;color:#185fa5;background:#fff;border-radius:9px;padding:3px 9px;font-size:12.5px;font-weight:700;margin-left:6px}
+.renbox{background:#e6f1fb;border:1.5px solid #85b7eb;border-radius:14px;padding:10px 12px;margin-top:10px}
+.renbox .b2{display:flex;gap:8px;margin-top:10px}.renbox .b2 button{flex:1;border-radius:10px;padding:10px;font-weight:800;border:1.5px solid #185fa5;background:#fff;color:#185fa5}.renbox .b2 button.p{background:#185fa5;color:#fff}
 .fld span{display:block;font-size:12.5px;font-weight:600;color:var(--mu);margin-bottom:5px}
 .fld input,.fld textarea,.fld select{width:100%;border:1.5px solid var(--ln);background:#fff;border-radius:12px;padding:11px 12px;font-size:16px;outline:0}
 .fld input:focus,.fld textarea:focus,.fld select:focus{border-color:var(--g2)}
@@ -304,11 +312,19 @@ a{color:var(--g2)}
         <div class="sec">Update status</div>
         <div class="sbt" id="sbt">
           <button type="button" data-st="picked">&#128230; Picked up</button>
+          <button type="button" data-st="dispatched">&#128667; Dispatched</button>
           <button type="button" data-st="transit">&#128666; In transit</button>
           <button type="button" data-st="ofd">&#128757; Out for delivery</button>
           <button type="button" data-st="delivered">&#9989; Delivered</button>
           <button type="button" data-st="failed" class="b">&#9888; Attempt failed</button>
           <button type="button" data-st="rto" class="b">&#8617; RTO</button>
+        </div>
+        <div class="dispbox" id="dispF" hidden>
+          <div class="t">Dispatch details</div>
+          <label class="fld"><span>Vehicle no. <b style="color:var(--rd)">*</b></span><input id="dVeh" placeholder="KA 05 AB 1234" autocomplete="off" autocapitalize="characters"><small class="err" id="dVehErr" hidden>Enter the vehicle number</small></label>
+          <label class="fld"><span>Tracking ID (optional)</span><input id="dTrk" placeholder="AWB / LR number" autocomplete="off"></label>
+          <label class="fld"><span>Courier for this tracking ID</span><select id="dCou"></select></label>
+          <div class="h">Tracking ID is filled with the current AWB. Change it only if the parcel moved to a new AWB.</div>
         </div>
         <label class="fld" id="recvF" hidden><span>Received by</span><input id="recv" placeholder="Name of the person who took the parcel" autocomplete="off"></label>
         <label class="fld"><span id="noteL">Note (optional)</span><input id="note" placeholder="e.g. Office closed, will try tomorrow" autocomplete="off"></label>
@@ -393,8 +409,8 @@ async function api(body, ms){
 }
 
 /* ---------- status logic (partner status is separate from BoxUp's own tracking) ---------- */
-const PS = { 'Picked up':'picked', 'In transit':'transit', 'Out for delivery':'ofd', 'Delivered':'delivered', 'Attempt failed':'failed', 'RTO':'rto' };
-const ST_TXT = { picked:'Picked up', transit:'In transit', ofd:'Out for delivery', delivered:'Delivered', failed:'Attempt failed', rto:'RTO' };
+const PS = { 'Dispatched':'dispatched', 'Picked up':'picked', 'In transit':'transit', 'Out for delivery':'ofd', 'Delivered':'delivered', 'Attempt failed':'failed', 'RTO':'rto' };
+const ST_TXT = { dispatched:'Dispatched', picked:'Picked up', transit:'In transit', ofd:'Out for delivery', delivered:'Delivered', failed:'Attempt failed', rto:'RTO' };
 function awbs(o){ return String(o.awb || '').split(/[,\s]+/).filter(Boolean); }
 function olds(o){ return String(o.old || '').split(/[,\s]+/).filter(Boolean); }
 const moved = o => !!(olds(o).length && awbs(o).length);   // AWB changed (old AWBs still scan)
@@ -434,7 +450,7 @@ function group(o){                           // one bucket per order for KPIs, c
   if (p === 'delivered') return 'delivered';
   if (p === 'failed' || p === 'rto') return 'problem';
   if (p === 'ofd') return 'ofd';
-  if (p === 'picked' || p === 'transit') return 'transit';
+  if (p === 'picked' || p === 'transit' || p === 'dispatched') return 'transit';
   const s = sysStatus(o).toLowerCase();
   if (/deliver/.test(s) && !/out for/.test(s)) return 'delivered';
   if (/rto|return|closed/.test(s)) return 'problem';
@@ -625,7 +641,7 @@ let ST = '', POD = null;      // POD = {blob, url, mime, name, read}
 function openOrder(o, opts){
   if (!o) return;
   SEL = o; ST = ''; clearPod();
-  $('recv').value = ''; $('note').value = '';
+  $('recv').value = ''; $('note').value = ''; $('dVeh').value = ''; $('dTrk').value = ''; $('dispF').hidden = true; closeRen();
   renderDetail(true);
   document.querySelectorAll('.row').forEach(r => r.classList.toggle('sel', r.dataset.id === o.id));
   if (opts && opts.st) setSt(opts.st);
@@ -643,7 +659,8 @@ function renderDetail(scroll){
   $('dSub').textContent = 'Order ' + o.id + (a.length > 1 ? ' · ' + a.length + ' boxes' : o.box ? ' · ' + o.box + ' box' + (o.box == 1 ? '' : 'es') : '');
   $('dCard').innerHTML = `
     <h3>${esc(a[0] || '')}${a[0] ? ' · ' : ''}${esc(o.name || '')}</h3>
-    <div class="co">${esc(o.co || '')}${o.co ? ' · ' : ''}Order ${esc(o.id)}${o.box ? ' · ' + esc(o.box) + ' box' + (o.box == 1 ? '' : 'es') : ''}</div>
+    <div class="co">${esc(o.co || '')}${o.co ? ' · ' : ''}Order ${esc(o.id)}<button type="button" class="idchg" id="idChg">&#9998; Change</button>${o.box ? ' · ' + esc(o.box) + ' box' + (o.box == 1 ? '' : 'es') : ''}</div>
+    <div id="renBox"></div>
     <div class="ln"><span>&#128205;</span><span>${esc([o.addr, o.city, o.st, o.pin].filter(Boolean).join(', '))}</span></div>
     ${o.ph ? `<div class="ln"><span>&#128222;</span><a href="tel:${esc(o.ph.replace(/[^\d+]/g, ''))}">${esc(o.ph)}</a></div>` : ''}
     ${a.length ? `<div class="awbs">${a.map(x => (trackUrl(o.cou, x) ? `<a href="${esc(trackUrl(o.cou, x))}" target="_blank" rel="noopener">${esc(x)}</a>` : `<a>${esc(x)}</a>`)).join('')}</div>` : ''}
@@ -651,8 +668,9 @@ function renderDetail(scroll){
     ${moved(o) ? `<div class="mvl">&#8635; AWB changed: old AWB ${esc(olds(o).join(', '))}, now <b>${esc(couName(o))} ${esc(awbs(o).join(', '))}</b></div>` : ''}
     <div class="tags"><span class="chip">BoxUp: ${esc(sysStatus(o))}</span>${o.ps ? `<span class="chip ${chipCls(group(o))}">Partner: ${esc(o.ps)}</span>` : '<span class="chip">Partner: not updated yet</span>'}</div>
     <div class="hist">Booked ${esc(o.at || '')}${o.dd ? ' · dispatched ' + esc(o.dd) : ''}</div>`;
+  $('idChg').onclick = openRen;
   $('podLinks').innerHTML = String(o.pod || '').split(/\s*,\s*/).filter(Boolean).map((u, i) => `<a href="${esc(u)}" target="_blank" rel="noopener">&#128196; POD ${i + 1} uploaded</a>`).join('');
-  $('dHist').textContent = o.pup ? 'Last partner update: ' + o.pup + (o.ps ? ' · ' + o.ps : '') + (o.recv ? ' · received by ' + o.recv : '') + (o.pnote ? ' · ' + o.pnote : '') : '';
+  $('dHist').textContent = o.pup ? 'Last partner update: ' + o.pup + (o.ps ? ' · ' + o.ps : '') + (o.recv ? ' · received by ' + o.recv : '') + (o.pnote ? ' · ' + o.pnote : '') + (o.by ? ' · by ' + o.by : '') : '';
   document.querySelectorAll('#sbt button').forEach(b => b.classList.toggle('on', b.dataset.st === ST));
   refreshSave();
 }
@@ -667,6 +685,9 @@ function setSt(st){
   ST = ST === st ? '' : st;
   document.querySelectorAll('#sbt button').forEach(b => { b.classList.toggle('on', b.dataset.st === ST); b.classList.toggle('bad', b.dataset.st === ST && (ST === 'failed' || ST === 'rto')); });
   $('recvF').hidden = ST !== 'delivered';
+  $('dispF').hidden = ST !== 'dispatched';
+  if (ST === 'dispatched' && SEL) fillDisp(SEL);
+  $('dVehErr').hidden = true;
   $('noteL').textContent = ST === 'failed' ? 'Reason (why it could not be delivered)' : ST === 'rto' ? 'Reason for RTO' : 'Note (optional)';
   refreshSave();
 }
@@ -732,14 +753,52 @@ function clearPod(){ if (POD && POD.url) URL.revokeObjectURL(POD.url); POD = nul
 $('podCam').addEventListener('change', e => podFromFile(e.target.files[0]));
 $('podFile').addEventListener('change', e => podFromFile(e.target.files[0]));
 
+
+/* ---------- Dispatched: vehicle no. (required), tracking ID + courier (optional) ---------- */
+function fillDisp(o){
+  const cur = couName(o) || o.cou || '';
+  const list = COU_LIST.concat(['Bus / transport', 'Other']); if (cur && !list.includes(cur)) list.unshift(cur);
+  $('dCou').innerHTML = list.map(c => `<option${c === cur ? ' selected' : ''}>${esc(c)}</option>`).join('');
+  if (!$('dTrk').value) $('dTrk').value = saAwbs(o)[0] || awbs(o)[0] || '';
+  if (!$('dVeh').value && o.veh) $('dVeh').value = o.veh;
+}
+$('dVeh').addEventListener('input', () => { $('dVehErr').hidden = true; });
+/* ---------- change Order ID ---------- */
+function closeRen(){ const b = $('renBox'); if (b) b.innerHTML = ''; }
+function openRen(){
+  const o = SEL; if (!o) return;
+  $('renBox').innerHTML = `<div class="renbox"><div style="font-weight:800;color:#0c447c">Change order ID</div>
+    <label class="fld"><span>Current order ID</span><input value="${esc(o.id)}" disabled></label>
+    <label class="fld"><span>New order ID <b style="color:var(--rd)">*</b></span><input id="renNew" placeholder="e.g. ${esc(o.id)}-R1" autocomplete="off"><small class="err" id="renErr" hidden></small></label>
+    <label class="fld"><span>Reason (optional)</span><input id="renWhy" placeholder="e.g. Reshipped, new ID from BoxUp" autocomplete="off"></label>
+    <div class="b2"><button type="button" id="renNo">Cancel</button><button type="button" class="p" id="renGo">Save new ID</button></div></div>`;
+  $('renNo').onclick = closeRen;
+  $('renNew').oninput = () => { $('renErr').hidden = true; };
+  $('renGo').onclick = async () => {
+    const nid = $('renNew').value.trim(), err = $('renErr');
+    if (!nid) { err.textContent = 'Enter the new order ID'; err.hidden = false; $('renNew').focus(); return; }
+    if (nid.toLowerCase() === o.id.toLowerCase()) { err.textContent = 'This is the same as the current order ID'; err.hidden = false; return; }
+    const b = $('renGo'); b.disabled = true; b.innerHTML = '<span class="busy"></span> Saving…';
+    try {
+      const d = await api({ op:'rename', id: o.id, newId: nid, reason: $('renWhy').value.trim(), via: 'Partner page' + (whoTxt() ? ' · ' + whoTxt() : '') }, 60000);
+      if (!d || !d.ok) throw new Error((d && d.error) || 'Not saved');
+      const old = o.id; o.id = d.id; VER = '';
+      toast('&#10004; Order ID changed · ' + esc(old) + ' → ' + esc(d.id));
+      closeRen(); renderAll(); renderDetail(false);
+    } catch (e) { err.textContent = e.message; err.hidden = false; b.disabled = false; b.textContent = 'Save new ID'; }
+  };
+  $('renNew').focus();
+}
 async function saveOne(o, st, pod, extra){
   const body = { op:'set', id: o.id, awb: saAwbs(o)[0] || '', st: st || '', recv: (extra && extra.recv) || '', note: (extra && extra.note) || '',
                  via: ((extra && extra.via) || 'Partner page') + (whoTxt() ? ' · ' + whoTxt() : '') };
+  if (st === 'dispatched') Object.assign(body, { veh: (extra && extra.veh) || '', trk: (extra && extra.trk) || '', cou: (extra && extra.cou) || '' });
   if (pod) body.pod = { name: pod.name || 'pod.jpg', mime: pod.mime || 'image/jpeg', data: await blobB64(pod.blob) };
   const d = await api(body, 90000);
   if (!d || !d.ok) throw new Error((d && d.error) || 'Not saved');
   Object.assign(o, { ps: d.ps, pup: d.pup, pod: d.pod });
-  if (st) Object.assign(o, { recv: d.recv, pnote: d.pnote });
+  if (st) Object.assign(o, { recv: d.recv, pnote: d.pnote, by: d.by });
+  if (st === 'dispatched') { if (d.awb) o.awb = d.awb; if (d.cou) o.cou = d.cou; o.veh = d.veh; o.ds = 'Dispatched'; }
   MINE.add(o.id); store.set(MINE_KEY, [...MINE].slice(-500));
   VER = '';                                 // next refresh downloads the new list
   return d;
@@ -747,11 +806,12 @@ async function saveOne(o, st, pod, extra){
 $('saveBtn').addEventListener('click', async () => {
   const o = SEL; if (!o || (!ST && !POD)) return;
   if (ST === 'failed' && !$('note').value.trim()) { $('note').focus(); toast('Add the reason for the failed attempt'); return; }
+  if (ST === 'dispatched' && !$('dVeh').value.trim()) { $('dVehErr').hidden = false; $('dVeh').focus(); toast('Enter the vehicle number'); return; }
   const b = $('saveBtn'); b.disabled = true; b.innerHTML = '<span class="busy"></span> Saving…';
   try {
-    await saveOne(o, ST, POD, { recv: $('recv').value.trim(), note: $('note').value.trim() });
+    await saveOne(o, ST, POD, { recv: $('recv').value.trim(), note: $('note').value.trim(), veh: $('dVeh').value.trim(), trk: $('dTrk').value.trim(), cou: $('dCou').value });
     toast('&#10004; Saved · ' + (saAwbs(o)[0] || o.id) + (ST ? ' · ' + ST_TXT[ST] : '') + (POD ? ' · POD uploaded' : ''));
-    ST = ''; clearPod(); $('recv').value = ''; $('note').value = ''; setSt('');
+    ST = ''; clearPod(); $('recv').value = ''; $('note').value = ''; $('dVeh').value = ''; $('dTrk').value = ''; setSt('');
     renderAll();
     if (!wide()) setTimeout(closeDetail, 600);
   } catch (e) {
