@@ -943,7 +943,7 @@ $('saveBtn').addEventListener('click', async () => {
   try {
     if (ST === 'another') {                   // saved as a dispatch on the new courier + new AWB (old AWB stays in history)
       const from = couName(o), to = $('aCou').value, nAwb = $('aAwb').value.trim().toUpperCase(), n = $('note').value.trim();
-      await saveOne(o, 'dispatched', POD, { note: 'Shipped by another logistics: ' + (from && from !== 'No courier' ? from + ' → ' : '') + to + ' · AWB ' + nAwb + (n ? ' · ' + n : ''), trk: nAwb, cou: to });
+      await saveOne(o, 'dispatched', POD, { note: 'Shipped by another logistics: ' + (from && from !== 'No courier' ? from + ' → ' : '') + to + ' · AWB ' + nAwb + (n ? ' · ' + n : ''), trk: nAwb, cou: to, vehOn: true, veh: 'Shipped by ' + to, drv: '', dph: '', por: '' });   // the sheet asks for a vehicle no. on every dispatch: record the new courier there
     } else
     await saveOne(o, ST, POD, { recv: $('recv').value.trim(), note: $('note').value.trim(), trk: $('dTrk').value.trim(), cou: $('dCou').value, vehOn: vc || ST === 'dispatched', veh: V.veh, drv: V.drv, dph: V.dph, por: V.por });
     toast('&#10004; Saved · ' + (saAwbs(o)[0] || o.id) + (ST === 'another' ? ' · Shipped by ' + esc($('aCou').value) : ST ? ' · ' + ST_TXT[ST] : '') + (POD ? ' · POD uploaded' : '') + (vc ? ' · vehicle details' : ''));
@@ -1259,7 +1259,7 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js', { up
    When one is found, a full-screen popup blocks the page until "Download & restart" is tapped.
    It waits until nobody is typing / has an unsaved status, POD or vehicle details, so nothing half-entered is lost.
    >>> Change APP_VER on every upload: that is what tells all devices to update. <<< */
-const APP_VER = '2026-11-24 22:58';
+const APP_VER = '2026-11-25 00:08';
 let NEW_VER = '';
 const verTxt = v => { const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? +m[3] + '-' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m[2] - 1] + (String(v).slice(10).trim() ? ' ' + String(v).slice(10).trim() : '') : v; };
 async function checkUpdate(){
