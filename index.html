@@ -742,6 +742,7 @@ function openOrder(o, opts){
   $('recv').value = ''; $('note').value = ''; $('dTrk').value = ''; $('dispF').hidden = true; closeRen(); fillVeh(o);
   renderDetail(true);
   document.querySelectorAll('.row').forEach(r => r.classList.toggle('sel', r.dataset.id === o.id));
+  if (!wide()) layerOpen('det');
   if (opts && opts.st) setSt(opts.st);
   if (opts && opts.pod) setPod(opts.pod);
 }
@@ -803,7 +804,7 @@ function closeDetail(){
   SEL = null; clearPod();
   document.querySelectorAll('.row.sel').forEach(r => r.classList.remove('sel'));
 }
-$('detBack').addEventListener('click', closeDetail);
+$('detBack').addEventListener('click', () => layerBack('det', closeDetail));
 function setSt(st){
   ST = ST === st ? '' : st;
   document.querySelectorAll('#sbt button').forEach(b => { b.classList.toggle('on', b.dataset.st === ST); b.classList.toggle('bad', b.dataset.st === ST && (ST === 'failed' || ST === 'rto')); });
@@ -1131,14 +1132,18 @@ async function readPaper(cv, onStep){
 
 /* ---------- scanner ---------- */
 let stream = null, scanTimer = null, zxCtl = null, scanMode = 'live', lastPhoto = null;
+/* phone Back button: each open layer (scan / order) gets a history entry, so Back closes it instead of leaving the app */
+function layerOpen(k){ try { if (history.state && history.state.bx) history.replaceState({ bx: k }, ''); else history.pushState({ bx: k }, ''); } catch (e) {} }
+function layerBack(k, close){ if (history.state && history.state.bx === k) history.back(); else close(); }
 function openScan(){
+  layerOpen('scan');
   $('scanMod').hidden = false; document.body.style.overflow = 'hidden';
   $('found').hidden = true; setScanTab(scanMode);
 }
 function closeScan(){ stopCam(); $('scanMod').hidden = true; if ($('det').hidden || wide()) document.body.style.overflow = ''; }
 $('scanBtn').addEventListener('click', openScan);
 $('camBox').addEventListener('click', () => { if (scanMode === 'live' && camPaused) resumeCam(); });
-$('scanX').addEventListener('click', closeScan);
+$('scanX').addEventListener('click', () => layerBack('scan', closeScan));
 document.querySelectorAll('#scanMod .tabs button').forEach(b => b.addEventListener('click', () => setScanTab(b.dataset.t)));
 function setScanTab(t){
   scanMode = t; $('found').hidden = true;
@@ -1331,7 +1336,10 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { if (!$('scanMod').hidden) closeScan(); else if (!$('bulkMod').hidden) $('bulkX').click(); else if (SEL) closeDetail(); }
   if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') { e.preventDefault(); $('q').focus(); }
 });
-window.addEventListener('popstate', () => { if (!$('scanMod').hidden) closeScan(); else if (SEL && !wide()) closeDetail(); });
+window.addEventListener('popstate', () => {
+  if (!$('scanMod').hidden) { closeScan(); if (SEL && !wide()) layerOpen('det'); }   // back from scan: return to the open order, if any
+  else if (SEL && !wide()) closeDetail();
+});
 
 /* start: show the last saved list at once, then refresh */
 (function(){
@@ -1349,7 +1357,7 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js', { up
    When one is found, a full-screen popup blocks the page until "Download & restart" is tapped.
    It waits until nobody is typing / has an unsaved status, POD or vehicle details, so nothing half-entered is lost.
    >>> Change APP_VER on every upload: that is what tells all devices to update. <<< */
-const APP_VER = '2026-11-27 10:20';
+const APP_VER = '2026-11-27 10:30';
 let NEW_VER = '';
 const verTxt = v => { const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? +m[3] + '-' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m[2] - 1] + (String(v).slice(10).trim() ? ' ' + String(v).slice(10).trim() : '') : v; };
 async function checkUpdate(){
