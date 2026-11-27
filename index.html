@@ -210,6 +210,11 @@ a{color:var(--g2)}
 .rel.on{border-color:var(--gr);background:#f3faf5}
 .rel small{display:block;color:var(--mu);font-size:12px;margin-top:2px}
 .rel .why{font-size:11.5px;margin-top:4px}.why .y{color:#1f7a3f;font-weight:700}.why .n{color:#b3b0a6}
+.cl{display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:4px;background:#ecfdf5;color:#166534;border:1px solid #86efac;border-radius:8px;padding:2px 7px;font-size:11.5px;font-weight:800}
+.clb{background:#ecfdf5;border:1.5px solid #16a34a;border-radius:12px;padding:8px 11px;margin-top:10px}.clb span{display:block;font-size:10.5px;color:#166534;font-weight:800;letter-spacing:.04em}.clb b{font-size:15px}
+.mt{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}.mt span{background:#f3f1ea;border-radius:7px;padding:2px 7px;font-size:11px;font-weight:700;color:#3f463f;white-space:nowrap}
+.kvg{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}.kvg div{background:#f3f1ea;border-radius:10px;padding:6px 9px;font-size:12px;min-width:0}.kvg div span{display:block;color:var(--mu);font-size:10.5px;font-weight:700}.kvg div b{font-size:13px;overflow-wrap:anywhere}
+.csl{background:#f1f5f9;color:#334155;border-radius:10px;padding:7px 10px;font-size:12.5px;margin-top:8px}.csl.bad{background:#fef2f2;color:#991b1b}
 .mvl{font-size:12.5px;color:#8a6100;background:#fff8e6;border-radius:8px;padding:6px 9px;margin-top:6px}
 .found .pick{display:flex;flex-direction:column;gap:6px;max-height:40vh;overflow:auto}
 .found .pick button{text-align:left;border:1.5px solid var(--ln);background:#fff;border-radius:12px;padding:10px 12px}
@@ -649,12 +654,21 @@ function renderAll(){
   renderList();
   if (SEL) renderDetail(false);
 }
+const modeTxt = o => String(o.mode || '').replace(/\s*shipping$/i, '').trim();
+const dispTxt = o => [o.dd, o.dt].filter(Boolean).join(', ');
+const csTxt = o => { const c = String(o.cs || ''); const i = c.lastIndexOf(' · '); return (i > 0 ? c.slice(0, i) : c).trim(); };
+const altPh = o => (String(o.alt || '').replace(/[\s-]/g, '').match(/[6-9]\d{9}/) || [''])[0];
+function clientTag(o){ return o.sc ? `<span class="cl">Client: ${esc(o.sc)}</span>` : ''; }
+function metaStrip(o, withId){
+  const it = [withId ? 'Order ' + o.id : '', couName(o) + (modeTxt(o) ? ' · ' + modeTxt(o) : ''), o.box ? o.box + ' box' + (o.box == 1 ? '' : 'es') : '', [o.cat, o.stype && !/^forward$/i.test(o.stype) ? o.stype : ''].filter(Boolean).join(' · '), dispTxt(o) ? 'Disp ' + dispTxt(o) : ''].filter(Boolean);
+  return it.length ? `<div class="mt">${it.map(x => `<span>${esc(x)}</span>`).join('')}</div>` : '';
+}
 function rowHtml(o){
   const g = group(o), a = saAwbs(o);
   return `<button type="button" class="row st-${g}${SEL === o ? ' sel' : ''}" data-id="${esc(o.id)}">
     <div class="m"><div class="t">${couTag(o)}${esc(a[0] || o.id)} <span>· ${esc(o.name || o.co || '')}</span></div>
     <small>${esc([o.city, o.pin].filter(Boolean).join(' ') )} · ${esc(o.id)}${a.length > 1 ? ' · ' + a.length + ' boxes' : ''}</small>
-    <small>${esc(o.co || '')}</small>${moved(o) ? `<small style="color:#8a6100">&#8635; AWB changed · ${esc(nowTxt(o))}</small>` : ''}</div>
+    ${clientTag(o)}${o.co ? `<small>&#127970; ${esc(o.co)}</small>` : ''}${o.ph || o.alt ? `<small>&#128222; ${esc(o.ph || '')}${o.alt ? ' · Alt ' + esc(o.alt) : ''}</small>` : ''}${metaStrip(o)}${moved(o) ? `<small style="color:#8a6100">&#8635; AWB changed · ${esc(nowTxt(o))}</small>` : ''}</div>
     <div class="chips2">${o.ps ? partnerChip(o) : sysChip(o)}${o.pod ? '<span class="chip pod">POD &#10003;</span>' : ''}</div></button>`;
 }
 function renderList(){
@@ -764,13 +778,17 @@ function renderDetail(scroll){
   $('dCard').innerHTML = `
     <h3>${esc(a[0] || '')}${a[0] ? ' · ' : ''}${esc(o.name || '')}</h3>
     <div class="co">${esc(o.co || '')}${o.co ? ' · ' : ''}Order ${esc(o.id)}${o.box ? ' · ' + esc(o.box) + ' box' + (o.box == 1 ? '' : 'es') : ''}</div>
+    ${o.sc ? `<div class="clb"><span>CLIENT (SENDER COMPANY)</span><b>${esc(o.sc)}</b></div>` : ''}
     <div id="renBox"></div>
+    ${o.co ? `<div class="ln"><span>&#127970;</span><b>${esc(o.co)}</b></div>` : ''}
     <div class="ln"><span>&#128205;</span><span>${esc([o.addr, o.city, o.st, o.pin].filter(Boolean).join(', '))}</span></div>
     ${o.ph ? `<div class="ln"><span>&#128222;</span><a href="tel:${esc(o.ph.replace(/[^\d+]/g, ''))}">${esc(o.ph)}</a></div>` : ''}
+    ${o.alt ? `<div class="ln"><span>&#128222;</span><span>Alt: ${altPh(o) ? `<a href="tel:${esc(altPh(o))}">${esc(o.alt)}</a>` : esc(o.alt)}</span></div>` : ''}
+    <div class="kvg">${[['Courier', couName(o)], ['Mode', modeTxt(o)], ['Category', [o.cat, o.stype].filter(Boolean).join(' · ')], ['Boxes', o.box], ['Dispatch', [o.ds, dispTxt(o)].filter(Boolean).join(' · ')], ['Booked', o.at]].filter(x => x[1]).map(x => `<div><span>${x[0]}</span><b>${esc(x[1])}</b></div>`).join('')}</div>
+    ${csTxt(o) ? `<div class="csl${/rto|return|undeliver|fail|lost|damage/i.test(csTxt(o)) ? ' bad' : ''}"><b>Courier says:</b> ${esc(csTxt(o))}</div>` : ''}
     ${a.length ? `<div class="awbs">${a.map(x => (trackUrl(o.cou, x) ? `<a href="${esc(trackUrl(o.cou, x))}" target="_blank" rel="noopener">${esc(x)}</a>` : `<a>${esc(x)}</a>`)).join('')}</div>` : ''}
-    <div class="mvl" style="color:#555;background:#f1efe8">Courier: <b>${esc(couName(o))}</b></div>
     ${moved(o) ? `<div class="mvl">&#8635; AWB changed: old AWB ${esc(olds(o).join(', '))}, now <b>${esc(couName(o))} ${esc(awbs(o).join(', '))}</b></div>` : ''}
-    <div class="tags"><span class="chip">BoxUp: ${esc(sysStatus(o))}</span>${o.ps ? `<span class="chip ${chipCls(group(o))}">Partner: ${esc(o.ps)}</span>` : '<span class="chip">Partner: not updated yet</span>'}</div>
+    <div class="tags"><span class="chip">BoxUp: ${esc(sysStatus(o))}</span>${o.ps ? `<span class="chip ${chipCls(group(o))}">Partner: ${esc(o.ps)}</span>` : '<span class="chip">Partner: not updated yet</span>'}${o.pr ? `<span class="chip" style="background:#fde2e2;color:#b91c1c">Problem: ${esc(o.pr)}</span>` : ''}</div>
     ${(o.veh || o.por) ? `<div class="vline">&#128667; Vehicle: ${esc([o.veh, o.drv, o.dph, o.por ? 'Porter ID ' + o.por : ''].filter(Boolean).join(' · '))}</div>` : ''}
     <div class="hist">Booked ${esc(o.at || '')}${o.dd ? ' · dispatched ' + esc(o.dd) : ''}</div>
     ${tlHtml(o)}`;
@@ -1209,7 +1227,7 @@ function showFound(m, photo){
   }
   const o = m.o;
   f.innerHTML = `<div class="h">${m.by === 'old' ? '<span class="chip mv">Old AWB</span>' : '<span class="chip delivered">&#10003; Found</span>'} ${esc(m.by === 'old' ? m.key : saAwbs(o)[0] || o.id)}</div>
-    <div class="s">${m.by === 'old' ? 'This is an <b>old AWB</b> of this order. ' : ''}${esc([o.name, o.co, 'Order ' + o.id].filter(Boolean).join(' · '))} · ${esc(m.how || (m.by === 'id' ? 'Order no. read' : 'AWB read'))}<br>Now: ${esc(o.ps ? 'Partner ' + o.ps : 'BoxUp ' + sysStatus(o))}${moved(o) ? '<br><b>' + esc(nowTxt(o)) + '</b>' : ''}</div>
+    <div class="s">${m.by === 'old' ? 'This is an <b>old AWB</b> of this order. ' : ''}<b>${esc(o.name || '')}</b> · ${esc(m.how || (m.by === 'id' ? 'Order no. read' : 'AWB read'))}<br>${clientTag(o)}${o.co ? '<br>&#127970; ' + esc(o.co) : ''}<br>&#128205; ${esc([o.addr, o.city, o.st, o.pin].filter(Boolean).join(', '))}${o.ph ? '<br>&#128222; ' + esc(o.ph) + (o.alt ? ' · Alt ' + esc(o.alt) : '') : ''}${metaStrip(o, true)}Now: ${esc(o.ps ? 'Partner ' + o.ps : 'BoxUp ' + sysStatus(o))}${moved(o) ? '<br><b>' + esc(nowTxt(o)) + '</b>' : ''}</div>
     <div class="b2">${photo ? '<button type="button" class="p" id="fDel">&#9989; Delivered + save photo as POD</button>' : ''}<button type="button" id="fOpen">${photo ? 'Other status' : 'Open order'}</button>${photo ? '' : '<button type="button" class="p" id="fNext">Scan next</button>'}</div>`;
   $('fOpen').onclick = () => { closeScan(); openOrder(o, photo ? { pod: photo } : null); };
   if ($('fNext')) $('fNext').onclick = () => { closeScan(); openOrder(o); };
@@ -1331,7 +1349,7 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js', { up
    When one is found, a full-screen popup blocks the page until "Download & restart" is tapped.
    It waits until nobody is typing / has an unsaved status, POD or vehicle details, so nothing half-entered is lost.
    >>> Change APP_VER on every upload: that is what tells all devices to update. <<< */
-const APP_VER = '2026-11-25 00:55';
+const APP_VER = '2026-11-27 10:20';
 let NEW_VER = '';
 const verTxt = v => { const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? +m[3] + '-' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m[2] - 1] + (String(v).slice(10).trim() ? ' ' + String(v).slice(10).trim() : '') : v; };
 async function checkUpdate(){
