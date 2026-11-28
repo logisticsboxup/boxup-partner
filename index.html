@@ -230,6 +230,9 @@ body.noscroll{overflow:hidden;overscroll-behavior:none}
 #agInstall{width:100%;background:#1e4a2c;color:#fff;border:0;border-radius:12px;padding:14px;font-weight:800;font-size:16px}
 #appGate .agh{margin-top:14px;background:#f4f1e8;border-radius:12px;padding:10px 12px;font-size:12.5px;color:#444;line-height:1.5;text-align:left}
 #appGate .agl{margin-top:12px;background:none;border:0;color:#6b716c;text-decoration:underline;font-size:12.5px}
+.callr{display:flex;gap:8px;margin-top:10px}.callr .cb{flex:1;display:flex;align-items:center;justify-content:center;gap:9px;border-radius:14px;padding:12px 8px;font-weight:800;font-size:15.5px;background:#16a34a;color:#fff;text-decoration:none;box-shadow:0 3px 0 #0f7a36}
+.callr .cb span{display:flex;flex-direction:column;line-height:1.15;text-align:left}.callr .cb small{font-size:12px;font-weight:600;opacity:.92}
+.callr .cb.msg{font-size:14.5px;padding:10px 8px}.callr .cb.wa{background:#25D366;box-shadow:0 3px 0 #1a9c4b}.callr .cb.sms{background:#1d5c96;box-shadow:0 3px 0 #123f69}.callr .cb.alt{background:#fff;color:#16a34a;border:2px solid #16a34a;box-shadow:none}
 .mvl{font-size:12.5px;color:#8a6100;background:#fff8e6;border-radius:8px;padding:6px 9px;margin-top:6px}
 .found .pick{display:flex;flex-direction:column;gap:6px;max-height:40vh;overflow:auto}
 .found .pick button{text-align:left;border:1.5px solid var(--ln);background:#fff;border-radius:12px;padding:10px 12px}
@@ -674,6 +677,18 @@ const modeTxt = o => String(o.mode || '').replace(/\s*shipping$/i, '').trim();
 const dispTxt = o => [o.dd, o.dt].filter(Boolean).join(', ');
 const csTxt = o => { const c = String(o.cs || ''); const i = c.lastIndexOf(' · '); return (i > 0 ? c.slice(0, i) : c).trim(); };
 const altPh = o => (String(o.alt || '').replace(/[\s-]/g, '').match(/[6-9]\d{9}/) || [''])[0];
+const ph10 = v => { const d = String(v || '').replace(/\D/g, ''); return d.length >= 10 ? d.slice(-10) : ''; };
+const phFmt = d => d.slice(0, 5) + ' ' + d.slice(5);
+function callBox(o){
+  const m = ph10(o.ph), a = altPh(o), at = String(o.alt || '').trim();
+  let h = '';
+  if (m) h += `<div class="callr"><a class="cb" href="tel:+91${m}">&#128222;<span>Call customer<small>${phFmt(m)}</small></span></a></div>
+    <div class="callr"><a class="cb msg wa" href="https://wa.me/91${m}" target="_blank" rel="noopener">&#128172;<span>WhatsApp<small>message</small></span></a><a class="cb msg sms" href="sms:+91${m}">&#9993;&#65039;<span>SMS<small>text message</small></span></a></div>`;
+  else if (o.ph) h += `<div class="ln"><span>&#128222;</span>${esc(o.ph)}</div>`;
+  if (a && a !== m) h += `<div class="callr"><a class="cb alt" href="tel:+91${a}">&#128222;<span>Call alternate<small>${phFmt(a)}${at.replace(/[\d\s+-]/g, '').trim() ? ' · ' + esc(at.replace(/[6-9][\d\s-]{9,}/, '').trim()) : ''}</small></span></a></div>`;
+  else if (at && !a) h += `<div class="ln"><span>&#128100;</span><span>Alt: ${esc(at)}</span></div>`;
+  return h;
+}
 function clientTag(o){ return o.sc ? `<span class="cl">Client: ${esc(o.sc)}</span>` : ''; }
 function metaStrip(o, withId){
   const it = [withId ? 'Order ' + o.id : '', couName(o) + (modeTxt(o) ? ' · ' + modeTxt(o) : ''), o.box ? o.box + ' box' + (o.box == 1 ? '' : 'es') : '', [o.cat, o.stype && !/^forward$/i.test(o.stype) ? o.stype : ''].filter(Boolean).join(' · '), dispTxt(o) ? 'Disp ' + dispTxt(o) : ''].filter(Boolean);
@@ -800,8 +815,7 @@ function renderDetail(scroll){
     <div id="renBox"></div>
     ${o.co ? `<div class="ln"><span>&#127970;</span><b>${esc(o.co)}</b></div>` : ''}
     <div class="ln"><span>&#128205;</span><span>${esc([o.addr, o.city, o.st, o.pin].filter(Boolean).join(', '))}</span></div>
-    ${o.ph ? `<div class="ln"><span>&#128222;</span><a href="tel:${esc(o.ph.replace(/[^\d+]/g, ''))}">${esc(o.ph)}</a></div>` : ''}
-    ${o.alt ? `<div class="ln"><span>&#128222;</span><span>Alt: ${altPh(o) ? `<a href="tel:${esc(altPh(o))}">${esc(o.alt)}</a>` : esc(o.alt)}</span></div>` : ''}
+    ${callBox(o)}
     <div class="kvg">${[['Courier', couName(o)], ['Mode', modeTxt(o)], ['Category', [o.cat, o.stype].filter(Boolean).join(' · ')], ['Boxes', o.box], ['Dispatch', [o.ds, dispTxt(o)].filter(Boolean).join(' · ')], ['Booked', o.at]].filter(x => x[1]).map(x => `<div><span>${x[0]}</span><b>${esc(x[1])}</b></div>`).join('')}</div>
     ${csTxt(o) ? `<div class="csl${/rto|return|undeliver|fail|lost|damage/i.test(csTxt(o)) ? ' bad' : ''}"><b>Courier says:</b> ${esc(csTxt(o))}</div>` : ''}
     ${a.length ? `<div class="awbs">${a.map(x => (trackUrl(o.cou, x) ? `<a href="${esc(trackUrl(o.cou, x))}" target="_blank" rel="noopener">${esc(x)}</a>` : `<a>${esc(x)}</a>`)).join('')}</div>` : ''}
@@ -1380,7 +1394,7 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js', { up
    When one is found, a full-screen popup blocks the page until "Download & restart" is tapped.
    It waits until nobody is typing / has an unsaved status, POD or vehicle details, so nothing half-entered is lost.
    >>> Change APP_VER on every upload: that is what tells all devices to update. <<< */
-const APP_VER = '2026-11-28 11:50';
+const APP_VER = '2026-11-28 13:30';
 let NEW_VER = '';
 const verTxt = v => { const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? +m[3] + '-' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m[2] - 1] + (String(v).slice(10).trim() ? ' ' + String(v).slice(10).trim() : '') : v; };
 async function checkUpdate(){
@@ -1434,11 +1448,19 @@ window.addEventListener('appinstalled', () => { $('inst').hidden = true; $('appG
 /* phones: BoxUp Partner should run as its own installed app, not inside a Chrome tab */
 const isPhone = () => /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent);
 const gateSkip = () => { try { return sessionStorage.getItem('boxup.partner.tab') === '1'; } catch (e) { return false; } };
-function showGate(){ if (!isPhone() || standalone() || gateSkip()) return; $('appGate').hidden = false;
+function showGate(){ if (!isPhone() || standalone() || gateSkip() || window.top !== window.self) return; $('appGate').hidden = false;
   if (/iphone|ipad|ipod/i.test(navigator.userAgent)) { $('agInstall').hidden = true; $('agHow').innerHTML = 'Tap <b>Share</b> &#8679; then <b>Add to Home Screen</b>. Then open <b>BoxUp Partner</b> from your home screen.'; } }
 $('agInstall').addEventListener('click', async () => { if (!instEv) { $('agHow').style.outline = '2px solid #1e4a2c'; return; } instEv.prompt(); try { const c = await instEv.userChoice; if (c && c.outcome === 'accepted') $('appGate').hidden = true; } catch (e) {} instEv = null; });
 $('agSkip').addEventListener('click', () => { $('appGate').hidden = true; try { sessionStorage.setItem('boxup.partner.tab', '1'); } catch (e) {} });
 showGate();
+/* opened from the BoxUp Logistics app: #scan opens the scanner, #q=AWB opens that order */
+(function(){ const h = location.hash || ''; if (!/scan|q=/.test(h)) return; let n = 0;
+  const t = setInterval(() => { if (typeof ORDERS === 'undefined' || !ORDERS.length) { if (++n > 60) clearInterval(t); return; } clearInterval(t);
+    try { history.replaceState(history.state, '', location.pathname); } catch (e) {}
+    if (/scan/.test(h)) { openScan(); return; }
+    const q = decodeURIComponent((h.match(/q=([^&]+)/) || [])[1] || '').toLowerCase();
+    const o = ORDERS.find(x => String(x.awb || '').toLowerCase().split(/[\s,]+/).includes(q) || String(x.id || '').toLowerCase() === q);
+    if (o) openOrder(o); }, 500); })();
 if (!WHO.co) whoOpen();
 setInterval(() => { if (!document.hidden && $('scanMod').hidden && $('bulkMod').hidden) load(); }, 60000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
